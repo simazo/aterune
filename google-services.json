@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "518719396116",
+    "project_id": "aterune",
+    "storage_bucket": "aterune.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:518719396116:android:f294da4b0cd42827bd4a01",
+        "android_client_info": {
+          "package_name": "com.simazo.aterune"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrm0M-cCePpWrIKMAsGDOvYXjcrKWaLvo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
