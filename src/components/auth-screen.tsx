@@ -1,6 +1,7 @@
+import { signUpWithEmail } from '@/lib/auth';
 import {
-    getCurrentPlatform,
-    registerForPushNotificationsAsync,
+  getCurrentPlatform,
+  registerForPushNotificationsAsync,
 } from '@/lib/pushToken';
 import { supabase } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
@@ -11,11 +12,16 @@ type Props = {
   session: Session | null;
 };
 
+type Mode = 'signIn' | 'signUp';
+
 export function AuthScreen({ session }: Props) {
+  const [mode, setMode] = useState<Mode>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [signUpEmailSent, setSignUpEmailSent] = useState(false);
 
   async function handleSignIn() {
     setLoading(true);
@@ -31,6 +37,27 @@ export function AuthScreen({ session }: Props) {
     } else {
       // ログイン成功 → push token登録
       await registerPushToken();
+    }
+    setLoading(false);
+  }
+
+  async function handleSignUp() {
+    setLoading(true);
+    setErrorMessage(null);
+
+    if (!displayName.trim()) {
+      setErrorMessage('表示名を入力してください');
+      setLoading(false);
+      return;
+    }
+
+    const { error } = await signUpWithEmail(email, password, displayName.trim());
+
+    if (error) {
+      setErrorMessage(error.message);
+    } else {
+      // Confirm email必須のため、この時点ではセッションはまだ確立しない
+      setSignUpEmailSent(true);
     }
     setLoading(false);
   }
@@ -81,6 +108,12 @@ export function AuthScreen({ session }: Props) {
     setLoading(false);
   }
 
+  function switchMode(next: Mode) {
+    setMode(next);
+    setErrorMessage(null);
+    setSignUpEmailSent(false);
+  }
+
   if (session) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 16 }}>
@@ -102,9 +135,38 @@ export function AuthScreen({ session }: Props) {
     );
   }
 
+  if (signUpEmailSent) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 16 }}>
+        <Text style={{ color: 'white', fontSize: 16, textAlign: 'center' }}>
+          確認メールを送信しました。{'\n'}
+          メール内のリンクをタップして登録を完了してください。
+        </Text>
+        <Pressable
+          onPress={() => switchMode('signIn')}
+          style={{ backgroundColor: '#444', padding: 12, borderRadius: 8 }}
+        >
+          <Text style={{ color: 'white', textAlign: 'center' }}>ログイン画面に戻る</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 12 }}>
-      <Text style={{ color: 'white', fontSize: 20, marginBottom: 12 }}>ログイン</Text>
+      <Text style={{ color: 'white', fontSize: 20, marginBottom: 12 }}>
+        {mode === 'signIn' ? 'ログイン' : '新規登録'}
+      </Text>
+
+      {mode === 'signUp' && (
+        <TextInput
+          placeholder="表示名"
+          placeholderTextColor="#888"
+          value={displayName}
+          onChangeText={setDisplayName}
+          style={{ borderWidth: 1, borderColor: '#555', borderRadius: 8, padding: 12, color: 'white' }}
+        />
+      )}
       <TextInput
         placeholder="メールアドレス"
         placeholderTextColor="#888"
@@ -124,15 +186,22 @@ export function AuthScreen({ session }: Props) {
       />
       {errorMessage && <Text style={{ color: '#ff6b6b' }}>{errorMessage}</Text>}
       <Pressable
-        onPress={handleSignIn}
+        onPress={mode === 'signIn' ? handleSignIn : handleSignUp}
         disabled={loading}
         style={{ backgroundColor: '#208AEF', padding: 12, borderRadius: 8, marginTop: 8 }}
       >
         {loading ? (
           <ActivityIndicator color="white" />
         ) : (
-          <Text style={{ color: 'white', textAlign: 'center' }}>ログイン</Text>
+          <Text style={{ color: 'white', textAlign: 'center' }}>
+            {mode === 'signIn' ? 'ログイン' : '新規登録'}
+          </Text>
         )}
+      </Pressable>
+      <Pressable onPress={() => switchMode(mode === 'signIn' ? 'signUp' : 'signIn')}>
+        <Text style={{ color: '#aaa', textAlign: 'center', marginTop: 8 }}>
+          {mode === 'signIn' ? 'アカウントをお持ちでない方はこちら' : 'ログインはこちら'}
+        </Text>
       </Pressable>
     </View>
   );
