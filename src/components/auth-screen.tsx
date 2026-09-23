@@ -4,17 +4,12 @@ import {
   registerForPushNotificationsAsync,
 } from '@/lib/pushToken';
 import { supabase } from '@/lib/supabase';
-import type { Session } from '@supabase/supabase-js';
 import { useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
-type Props = {
-  session: Session | null;
-};
-
 type Mode = 'signIn' | 'signUp';
 
-export function AuthScreen({ session }: Props) {
+export function AuthScreen() {
   const [mode, setMode] = useState<Mode>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -86,53 +81,10 @@ export function AuthScreen({ session }: Props) {
     }
   }
 
-  async function handleSignOut() {
-    setLoading(true);
-
-    // ログアウト前にトークン削除（RLS上、認証有効なうちに実行する必要がある）
-    const token = await registerForPushNotificationsAsync();
-    if (token) {
-      const { error } = await supabase
-        .from('push_tokens')
-        .delete()
-        .eq('expo_push_token', token);
-
-      if (error) {
-        console.log('push_tokens削除エラー:', error.message);
-      } else {
-        console.log('push_tokens削除成功:', token);
-      }
-    }
-
-    await supabase.auth.signOut();
-    setLoading(false);
-  }
-
   function switchMode(next: Mode) {
     setMode(next);
     setErrorMessage(null);
     setSignUpEmailSent(false);
-  }
-
-  if (session) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 16 }}>
-        <Text style={{ color: 'white', fontSize: 16 }}>
-          ログイン中: {session.user.email}
-        </Text>
-        <Pressable
-          onPress={handleSignOut}
-          disabled={loading}
-          style={{ backgroundColor: '#444', padding: 12, borderRadius: 8 }}
-        >
-          {loading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text style={{ color: 'white', textAlign: 'center' }}>ログアウト</Text>
-          )}
-        </Pressable>
-      </View>
-    );
   }
 
   if (signUpEmailSent) {
