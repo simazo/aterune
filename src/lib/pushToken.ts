@@ -4,6 +4,12 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
+  // Web版は未対応（app.jsonにVAPID公開鍵の設定が必要なため）
+  if (Platform.OS === 'web') {
+    console.log('プッシュ通知はWeb版では未対応です');
+    return null;
+  }
+
   // Android向け：通知チャンネルの作成（必須）
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
