@@ -1,19 +1,23 @@
+import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
+import { Heading } from '@/components/ui/heading';
+import { Input, InputField } from '@/components/ui/input';
+import { Link, LinkText } from '@/components/ui/link';
+import { VStack } from '@/components/ui/vstack';
+import { useErrorToast } from '@/hooks/use-error-toast';
 import { getCurrentPlatform, registerForPushNotificationsAsync } from '@/lib/pushToken';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
 export function Login() {
   const router = useRouter();
+  const showError = useErrorToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function handleSignIn() {
     setLoading(true);
-    setErrorMessage(null);
 
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -21,7 +25,7 @@ export function Login() {
     });
 
     if (error) {
-      setErrorMessage(error.message);
+      showError(error.message);
     } else {
       // ログイン成功 → push token登録
       await registerPushToken();
@@ -54,43 +58,38 @@ export function Login() {
   }
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 12 }}>
-      <Text style={{ color: 'white', fontSize: 20, marginBottom: 12 }}>ログイン</Text>
+    <VStack className="flex-1 justify-center bg-background p-6" space="md">
+      <Heading size="xl" className="mb-3">
+        ログイン
+      </Heading>
 
-      <TextInput
-        placeholder="メールアドレス"
-        placeholderTextColor="#888"
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        style={{ borderWidth: 1, borderColor: '#555', borderRadius: 8, padding: 12, color: 'white' }}
-      />
-      <TextInput
-        placeholder="パスワード"
-        placeholderTextColor="#888"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        style={{ borderWidth: 1, borderColor: '#555', borderRadius: 8, padding: 12, color: 'white' }}
-      />
-      {errorMessage && <Text style={{ color: '#ff6b6b' }}>{errorMessage}</Text>}
-      <Pressable
-        onPress={handleSignIn}
-        disabled={loading}
-        style={{ backgroundColor: '#208AEF', padding: 12, borderRadius: 8, marginTop: 8 }}
-      >
-        {loading ? (
-          <ActivityIndicator color="white" />
-        ) : (
-          <Text style={{ color: 'white', textAlign: 'center' }}>ログイン</Text>
-        )}
-      </Pressable>
-      <Pressable onPress={() => router.push('/signup')}>
-        <Text style={{ color: '#aaa', textAlign: 'center', marginTop: 8 }}>
+      <Input>
+        <InputField
+          placeholder="メールアドレス"
+          value={email}
+          onChangeText={setEmail}
+          autoCapitalize="none"
+          keyboardType="email-address"
+        />
+      </Input>
+      <Input>
+        <InputField
+          placeholder="パスワード"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
+      </Input>
+
+      <Button onPress={handleSignIn} isDisabled={loading} className="mt-2">
+        {loading ? <ButtonSpinner /> : <ButtonText>ログイン</ButtonText>}
+      </Button>
+
+      <Link onPress={() => router.push('/signup')}>
+        <LinkText className="mt-2 text-center" size="sm">
           アカウントをお持ちでない方はこちら
-        </Text>
-      </Pressable>
-    </View>
+        </LinkText>
+      </Link>
+    </VStack>
   );
 }

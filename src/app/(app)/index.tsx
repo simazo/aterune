@@ -1,8 +1,10 @@
+import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { VStack } from '@/components/ui/vstack';
 import { useAuth } from '@/hooks/use-auth';
 import { registerForPushNotificationsAsync } from '@/lib/pushToken';
 import { supabase } from '@/lib/supabase';
 import { useState } from 'react';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 // TODO: 仮実装。ログイン中であることの確認用の簡易画面。
 // 本実装ではフロントエンド設計方針に沿って、screens/配下の実際のホーム画面に置き換える。
@@ -33,21 +35,11 @@ export default function AppHomeScreen() {
   }
 
   return (
-    <View style={{ flex: 1, justifyContent: 'center', padding: 24, gap: 16 }}>
-      <Text style={{ color: 'white', fontSize: 16 }}>
-        ログイン中: {session?.user.email}
-      </Text>
-      <Pressable
-        onPress={handleSignOut}
-        disabled={loading}
-        style={{ backgroundColor: '#444', padding: 12, borderRadius: 8 }}
-      >
-        {loading ? (
-          <ActivityIndicator color="white" />
-        ) : (
-          <Text style={{ color: 'white', textAlign: 'center' }}>ログアウト</Text>
-        )}
-      </Pressable>
-    </View>
+    <VStack className="flex-1 justify-center bg-background p-6" space="md">
+      <Text size="md">ログイン中: {session?.user.email}</Text>
+      <Button variant="secondary" onPress={handleSignOut} isDisabled={loading}>
+        {loading ? <ButtonSpinner /> : <ButtonText>ログアウト</ButtonText>}
+      </Button>
+    </VStack>
   );
 }
