@@ -45,6 +45,7 @@
     "@tailwindcss/postcss": "^4.2.0",
     "@types/react": "~19.2.2",
     "babel-plugin-module-resolver": "^5.0.0",
+    "playwright": "^1.63.0",
     "postcss": "^8.5.26",
     "supabase": "^2.115.0",
     "tailwindcss": "^4.2.0",
