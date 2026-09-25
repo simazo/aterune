@@ -1,4 +1,5 @@
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
+import { FormControl, FormControlError, FormControlErrorText } from '@/components/ui/form-control';
 import { Heading } from '@/components/ui/heading';
 import { Input, InputField } from '@/components/ui/input';
 import { Link, LinkText } from '@/components/ui/link';
@@ -6,17 +7,26 @@ import { VStack } from '@/components/ui/vstack';
 import { useErrorToast } from '@/hooks/use-error-toast';
 import { getCurrentPlatform, registerForPushNotificationsAsync } from '@/lib/pushToken';
 import { supabase } from '@/lib/supabase';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { loginSchema, type LoginFormValues } from './schema';
 
 export function Login() {
   const router = useRouter();
   const showError = useErrorToast();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
 
-  async function handleSignIn() {
+  async function onSubmit({ email, password }: LoginFormValues) {
     setLoading(true);
 
     const { error } = await supabase.auth.signInWithPassword({
@@ -63,25 +73,50 @@ export function Login() {
         ログイン
       </Heading>
 
-      <Input>
-        <InputField
-          placeholder="メールアドレス"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-      </Input>
-      <Input>
-        <InputField
-          placeholder="パスワード"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-      </Input>
+      <Controller
+        control={control}
+        name="email"
+        render={({ field: { value, onChange, onBlur } }) => (
+          <FormControl isInvalid={!!errors.email}>
+            <Input>
+              <InputField
+                placeholder="メールアドレス"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </Input>
+            <FormControlError>
+              <FormControlErrorText>{errors.email?.message}</FormControlErrorText>
+            </FormControlError>
+          </FormControl>
+        )}
+      />
 
-      <Button onPress={handleSignIn} isDisabled={loading} className="mt-2">
+      <Controller
+        control={control}
+        name="password"
+        render={({ field: { value, onChange, onBlur } }) => (
+          <FormControl isInvalid={!!errors.password}>
+            <Input>
+              <InputField
+                placeholder="パスワード"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                secureTextEntry
+              />
+            </Input>
+            <FormControlError>
+              <FormControlErrorText>{errors.password?.message}</FormControlErrorText>
+            </FormControlError>
+          </FormControl>
+        )}
+      />
+
+      <Button onPress={handleSubmit(onSubmit)} isDisabled={loading} className="mt-2">
         {loading ? <ButtonSpinner /> : <ButtonText>ログイン</ButtonText>}
       </Button>
 

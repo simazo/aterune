@@ -1,4 +1,5 @@
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
+import { FormControl, FormControlError, FormControlErrorText } from '@/components/ui/form-control';
 import { Heading } from '@/components/ui/heading';
 import { Input, InputField } from '@/components/ui/input';
 import { Link, LinkText } from '@/components/ui/link';
@@ -6,26 +7,28 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useErrorToast } from '@/hooks/use-error-toast';
 import { signUpWithEmail } from '@/lib/auth';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
+import { signupSchema, type SignupFormValues } from './schema';
 
 export function Signup() {
   const router = useRouter();
   const showError = useErrorToast();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const [signUpEmailSent, setSignUpEmailSent] = useState(false);
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { displayName: '', email: '', password: '' },
+  });
 
-  async function handleSignUp() {
+  async function onSubmit({ displayName, email, password }: SignupFormValues) {
     setLoading(true);
-
-    if (!displayName.trim()) {
-      showError('表示名を入力してください');
-      setLoading(false);
-      return;
-    }
 
     const { error } = await signUpWithEmail(email, password, displayName.trim());
 
@@ -58,28 +61,70 @@ export function Signup() {
         新規登録
       </Heading>
 
-      <Input>
-        <InputField placeholder="表示名" value={displayName} onChangeText={setDisplayName} />
-      </Input>
-      <Input>
-        <InputField
-          placeholder="メールアドレス"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-      </Input>
-      <Input>
-        <InputField
-          placeholder="パスワード"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-      </Input>
+      <Controller
+        control={control}
+        name="displayName"
+        render={({ field: { value, onChange, onBlur } }) => (
+          <FormControl isInvalid={!!errors.displayName}>
+            <Input>
+              <InputField
+                placeholder="表示名"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+              />
+            </Input>
+            <FormControlError>
+              <FormControlErrorText>{errors.displayName?.message}</FormControlErrorText>
+            </FormControlError>
+          </FormControl>
+        )}
+      />
 
-      <Button onPress={handleSignUp} isDisabled={loading} className="mt-2">
+      <Controller
+        control={control}
+        name="email"
+        render={({ field: { value, onChange, onBlur } }) => (
+          <FormControl isInvalid={!!errors.email}>
+            <Input>
+              <InputField
+                placeholder="メールアドレス"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </Input>
+            <FormControlError>
+              <FormControlErrorText>{errors.email?.message}</FormControlErrorText>
+            </FormControlError>
+          </FormControl>
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="password"
+        render={({ field: { value, onChange, onBlur } }) => (
+          <FormControl isInvalid={!!errors.password}>
+            <Input>
+              <InputField
+                placeholder="パスワード"
+                value={value}
+                onChangeText={onChange}
+                onBlur={onBlur}
+                secureTextEntry
+              />
+            </Input>
+            <FormControlError>
+              <FormControlErrorText>{errors.password?.message}</FormControlErrorText>
+            </FormControlError>
+          </FormControl>
+        )}
+      />
+
+      <Button onPress={handleSubmit(onSubmit)} isDisabled={loading} className="mt-2">
         {loading ? <ButtonSpinner /> : <ButtonText>新規登録</ButtonText>}
       </Button>
 
