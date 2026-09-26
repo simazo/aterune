@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { deletePushTokenForCurrentDevice } from './pushToken';
 import { supabase } from './supabase';
 
 const MOBILE_AUTH_REDIRECT_URL = 'aterune://auth/confirmed';
@@ -63,4 +64,10 @@ function parseAuthParams(url: string) {
   const [beforeHash, hash = ''] = url.split('#');
   const query = beforeHash.split('?')[1] ?? '';
   return new URLSearchParams([query, hash].filter(Boolean).join('&'));
+}
+
+export async function signOut() {
+  // push tokenの削除はログイン中にしか行えないため、signOutより先に実行する
+  await deletePushTokenForCurrentDevice();
+  return supabase.auth.signOut();
 }

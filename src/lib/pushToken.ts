@@ -77,3 +77,17 @@ export async function savePushTokenForCurrentUser() {
     console.log('push_tokens登録成功:', token);
   }
 }
+
+// この端末のpush tokenを削除する（RLS上、ログイン中にしか削除できないためログアウト前に呼ぶ）
+export async function deletePushTokenForCurrentDevice() {
+  const token = await registerForPushNotificationsAsync();
+  if (!token) return;
+
+  const { error } = await supabase.from('push_tokens').delete().eq('expo_push_token', token);
+
+  if (error) {
+    console.log('push_tokens削除エラー:', error.message);
+  } else {
+    console.log('push_tokens削除成功:', token);
+  }
+}

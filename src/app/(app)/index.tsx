@@ -2,8 +2,7 @@ import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAuth } from '@/hooks/use-auth';
-import { registerForPushNotificationsAsync } from '@/lib/pushToken';
-import { supabase } from '@/lib/supabase';
+import { signOut } from '@/lib/auth';
 import { useState } from 'react';
 
 // TODO: 仮実装。ログイン中であることの確認用の簡易画面。
@@ -14,23 +13,7 @@ export default function AppHomeScreen() {
 
   async function handleSignOut() {
     setLoading(true);
-
-    // ログアウト前にトークン削除（RLS上、認証有効なうちに実行する必要がある）
-    const token = await registerForPushNotificationsAsync();
-    if (token) {
-      const { error } = await supabase
-        .from('push_tokens')
-        .delete()
-        .eq('expo_push_token', token);
-
-      if (error) {
-        console.log('push_tokens削除エラー:', error.message);
-      } else {
-        console.log('push_tokens削除成功:', token);
-      }
-    }
-
-    await supabase.auth.signOut();
+    await signOut();
     setLoading(false);
   }
 
