@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 export const signupSchema = z.object({
-  displayName: z.string().min(1, '表示名を入力してください'),
+  // スペースだけの表示名を弾くため、前後の空白を除いてから文字数をチェックする
+  displayName: z.string().trim().min(1, '表示名を入力してください'),
   email: z
     .string()
     .min(1, 'メールアドレスを入力してください')

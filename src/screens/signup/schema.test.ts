@@ -22,6 +22,18 @@ describe('signupSchema', () => {
     );
   });
 
+  it('表示名がスペースだけならエラー', () => {
+    expect(firstErrorMessage({ ...validValues, displayName: '　 ' })).toBe(
+      '表示名を入力してください'
+    );
+  });
+
+  it('表示名の前後のスペースは取り除かれる', () => {
+    const result = signupSchema.safeParse({ ...validValues, displayName: ' テストユーザー ' });
+
+    expect(result.success && result.data.displayName).toBe('テストユーザー');
+  });
+
   it('メールアドレスが空ならエラー', () => {
     expect(firstErrorMessage({ ...validValues, email: '' })).toBe(
       'メールアドレスを入力してください'
