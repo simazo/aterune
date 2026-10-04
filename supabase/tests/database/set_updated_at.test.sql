@@ -1,5 +1,5 @@
 begin;
-select plan(2);
+select plan(4);
 
 -- テスト用の一時テーブル(トランザクションの最後に消える)
 create temp table t (id int, updated_at timestamptz default '2000-01-01');
@@ -23,6 +23,15 @@ update t set id = 2;
 select ok(
   (select updated_at from t) > '2000-01-01',
   'update すると set_updated_at が updated_at を現在時刻にする'
+);
+
+select is(
+  has_function_privilege('anon', 'public.set_updated_at()', 'execute'),
+  false, 'anon は set_updated_at を実行できない'
+);
+select is(
+  has_function_privilege('authenticated', 'public.set_updated_at()', 'execute'),
+  false, 'authenticated は set_updated_at を実行できない'
 );
 
 select * from finish();

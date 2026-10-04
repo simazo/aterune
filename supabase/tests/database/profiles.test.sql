@@ -1,16 +1,12 @@
 begin;
 select plan(11);
 
--- ---------- 準備(postgres 権限で実行される) ----------
-insert into auth.users (id, aud, role) values
-  ('00000000-0000-0000-0000-0000000000a1', 'authenticated', 'authenticated'),
-  ('00000000-0000-0000-0000-0000000000a2', 'authenticated', 'authenticated');
-
--- updated_at に古い日時を入れておく(now() はトランザクション内で固定のため)
-insert into public.profiles (id, display_name, updated_at) values
-  ('00000000-0000-0000-0000-0000000000a1', 'alice', '2000-01-01'),
-  ('00000000-0000-0000-0000-0000000000a2', 'bob',   '2000-01-01');
-
+-- ---------- 準備 ----------
+-- profiles は handle_new_user のトリガーで自動作成される
+insert into auth.users (id, aud, role, email) values
+  ('00000000-0000-0000-0000-0000000000a1', 'authenticated', 'authenticated', 'alice@example.com'),
+  ('00000000-0000-0000-0000-0000000000a2', 'authenticated', 'authenticated', 'bob@example.com');
+  
 -- ---------- 1. RLS が有効か ----------
 select is(
   (select relrowsecurity from pg_class where oid = 'public.profiles'::regclass),
@@ -18,15 +14,9 @@ select is(
   'profiles は RLS が有効'
 );
 
--- ---------- 2. updated_at の自動更新 ----------
-update public.profiles set bio = 'hello'
-  where id = '00000000-0000-0000-0000-0000000000a1';
-
-select ok(
-  (select updated_at from public.profiles
-    where id = '00000000-0000-0000-0000-0000000000a1') > '2000-01-01',
-  '更新すると updated_at が自動で新しくなる'
-);
+-- ---------- 2. updated_at 用のトリガーが付いているか ----------
+select has_trigger('public', 'profiles', 'profiles_set_updated_at',
+  'profiles に updated_at 用のトリガーが付いている');
 
 -- ---------- 3-4. active_mode の制約 ----------
 select throws_ok(
