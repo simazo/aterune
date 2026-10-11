@@ -230,7 +230,7 @@ create trigger sessions_guard_status_change
   before update of status on public.sessions
   for each row execute function public.guard_session_status_change();
 
-create trigger set_updated_at
+create trigger sessions_set_updated_at
   before update on public.sessions
   for each row execute function public.set_updated_at();
 

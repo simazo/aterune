@@ -13,7 +13,7 @@ comment on column public.profile_private_details.profile_id is '対象ユーザ�
 comment on column public.profile_private_details.birthdate  is '生年月日(非公開。セッションの相手の占い師にのみ、条件付きで開示される)';
 comment on column public.profile_private_details.gender     is '性別(非公開)';
 
-create trigger set_updated_at
+create trigger profile_private_details_set_updated_at
   before update on public.profile_private_details
   for each row execute function public.set_updated_at();
 

@@ -21,7 +21,7 @@ comment on column public.consultation_posts.status        is '投稿ステータ
 create index consultation_posts_consultant_id_idx on public.consultation_posts (consultant_id);
 create index consultation_posts_status_idx        on public.consultation_posts (status);
 
-create trigger set_updated_at
+create trigger consultation_posts_set_updated_at
   before update on public.consultation_posts
   for each row execute function public.set_updated_at();
 
