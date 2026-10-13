@@ -18,7 +18,7 @@ select ok(
 );
 
 -- 2. updated_at 用トリガーが付いている(トリガー名は既存の命名に合わせて調整)
-select has_trigger('public', 'consultation_posts', 'set_updated_at',
+select has_trigger('public', 'consultation_posts', 'consultation_posts_set_updated_at',
   'consultation_posts: updated_at トリガーがある');
 
 -- ===== anon =====

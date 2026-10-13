@@ -43,7 +43,7 @@ select ok(
 );
 
 -- 2. updated_at トリガー(名前は既存の命名に合わせる)
-select has_trigger('public', 'profile_private_details', 'set_updated_at',
+select has_trigger('public', 'profile_private_details', 'profile_private_details_set_updated_at',
   'profile_private_details: updated_at トリガーがある');
 
 -- ===== anon =====

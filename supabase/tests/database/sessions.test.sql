@@ -45,7 +45,7 @@ select ok(
 );
 
 -- 2. updated_at トリガー(トリガー名は既存の命名に合わせる)
-select has_trigger('public', 'sessions', 'set_updated_at', 'sessions: updated_at トリガーがある');
+select has_trigger('public', 'sessions', 'sessions_set_updated_at', 'sessions: updated_at トリガーがある');
 
 -- 3. expires_at の初期値は作成から48時間後
 select is(
