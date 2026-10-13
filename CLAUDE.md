@@ -71,14 +71,20 @@ npx supabase gen types typescript --local > src/types/database.types.ts
 - **UI**：gluestack-ui v5 のコンポーネントを `src/components/ui/` にコピーして使用（一部に `.web.tsx` の Web 版あり）。スタイルは NativeWind v5 / Tailwind v4（`global.css`、`metro.config.js`）。フォームは react-hook-form + `zodResolver`、エラーは `useErrorToast` で表示する。
 - **型**：`src/types/database.types.ts` は自動生成なので手で編集しない。`src/types/index.ts` で `Tables<'...'>` を使った行の型エイリアス（`Profile`、`Session` など）を公開している。
 - パスエイリアス `@/` → `src/`（`tsconfig.json` と `babel.config.js` の両方で設定）。
-- 単体テストでは `./supabase` などの lib モジュールを `jest.mock` でモックし、`Platform.OS` は `jest.replaceProperty` で差し替える。
 
 ### データベース（`supabase/`）
 - スキーマはすべてマイグレーションで管理する（1マイグレーションにつき1テーブル／1機能）。業務ルールはクライアントではなく Postgres の RLS ポリシーとトリガーで守る。例：`sessions` の status 遷移は `guard_session_status_change` がガードする（pending→active/rejected は申込まれた側のみ、completed は相談者のみ、expired/auto_completed はシステム＝`auth.uid()` が null の場合のみ）。
 - 役割はセッションごとに決まり、同じユーザーが相談者にも占い師にもなれる（`profiles.is_teller` は `teller_profiles` からトリガーで同期）。セッションの起点は、相談者からの申込みか、占い師による `consultation_posts`（掲示板投稿）への応募のどちらか（`initiated_by`）。
 - `notifications` の行は `sessions` のトリガーで作られる。外部へのプッシュ送信は Vault + `pg_net` で作る予定（拡張は有効化済み）。
 - 規約：トリガー名は `<table>_<purpose>`（例：共通関数 `set_updated_at()` を使う `sessions_set_updated_at`）、ポリシー名は `<table>_<action>_<scope>`。トリガー関数には `set search_path = ''` を付ける。`security definer` は他テーブルへの書き込みなど RLS を越える必要がある場合のみ付ける（`guard_session_status_change` のように呼び出し元の権限で動けばよいガード用トリガーには付けない）。どちらの場合もオブジェクト名はスキーマ修飾して書く。テーブルとカラムには日本語の `comment on` を付ける。
-- マイグレーションごとに対応する pgTAP テスト `supabase/tests/database/<table>.test.sql` を用意する（`begin; … rollback;` で囲み、`auth.users` にテストデータを入れ、ロールを切り替えて RLS を検証する）。
+
+### テスト
+- **配置の基本**：テストは対象と同じフォルダに `*.test.ts(x)` で置く（例：`src/lib/auth.test.ts`、`src/screens/<name>/schema.test.ts`）。
+- **例外（`src/app/`）**：`src/app/` 配下はすべてルートとして扱われるため、ルート・レイアウトのテストは `src/__tests__/` に置く。
+- **共通モジュール**：テスト用の共通処理（独自の render、モックの準備など）は `src/test-utils/` に置く。`__tests__/` 内のファイルは名前に関係なく jest がテストとして実行するため、そこには置かない。
+- **全体設定・手動モック**：全テスト共通の設定はルートの `jest.setup.ts`（`setupFilesAfterEnv` に登録）、モジュール丸ごとの手動モックは jest の規約どおり `__mocks__/` に置く。
+- **モックの書き方**：`./supabase` などの lib モジュールは `jest.mock` でモックし、`Platform.OS` は `jest.replaceProperty` で差し替える。
+- **DB（pgTAP）**：マイグレーションごとに対応する pgTAP テスト `supabase/tests/database/<table>.test.sql` を用意する（`begin; … rollback;` で囲み、`auth.users` にテストデータを入れ、ロールを切り替えて RLS を検証する）。
 
 
 ## 作業の進め方
