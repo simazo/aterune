@@ -72,7 +72,13 @@
     "test:watch": "jest --watchAll"
   },
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "coverageProvider": "v8",
+    "collectCoverageFrom": [
+      "src/**/*.{ts,tsx}",
+      "!src/components/ui/**",
+      "!src/types/**"
+    ]
   },
   "private": true,
   "overrides": {
