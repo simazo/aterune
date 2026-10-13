@@ -1,5 +1,5 @@
 begin;
-select plan(40);
+select plan(44);
 
 -- ===== テストデータ(postgres 権限) =====
 -- alice=占い師でもある相談者 / bob=占い師 / carol=占い師ではない一般ユーザー
@@ -12,12 +12,13 @@ insert into public.teller_profiles (profile_id) values
   ('00000000-0000-0000-0000-0000000000f1'),
   ('00000000-0000-0000-0000-0000000000f2');
 
--- alice の掲示板投稿(p1=open、p2=closed)
+-- alice の掲示板投稿(p1=open、p2=closed、p3=open)
 insert into public.consultation_posts (id, consultant_id, category, concern, status) values
   ('00000000-0000-0000-0000-000000000a01', '00000000-0000-0000-0000-0000000000f1', '恋愛', 'aliceの悩み', 'open'),
-  ('00000000-0000-0000-0000-000000000a02', '00000000-0000-0000-0000-0000000000f1', '仕事', '閉じた悩み',   'closed');
+  ('00000000-0000-0000-0000-000000000a02', '00000000-0000-0000-0000-0000000000f1', '仕事', '閉じた悩み',   'closed'),
+  ('00000000-0000-0000-0000-000000000a03', '00000000-0000-0000-0000-0000000000f1', '健康', 'aliceの別の悩み', 'open');
 
--- s1,s2: carol → bob の申込み(pending)/ s3: 進行中(active)/ s4: 期限切れの pending
+-- s1,s2: carol → bob の申込み(pending)/ s3: 進行中(active)/ s4: 期限切れの pending / s6: 拒否用の pending
 insert into public.sessions
   (id, applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern, status, expires_at)
 values
@@ -28,15 +29,20 @@ values
   ('00000000-0000-0000-0000-000000000503', '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f2',
    '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f2', 'consultant', 's3', 'active', default),
   ('00000000-0000-0000-0000-000000000504', '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f2',
-   '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f2', 'consultant', 's4', 'pending', now() - interval '1 hour');
+   '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f2', 'consultant', 's4', 'pending', now() - interval '1 hour'),
+  ('00000000-0000-0000-0000-000000000506', '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f2',
+   '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f2', 'consultant', 's6', 'pending', default);
 
--- s5: bob が alice の投稿 p1 に応募(concern は投稿からコピーされる)
+-- s5: bob が alice の投稿 p1 に応募(concern は投稿からコピーされる)/ s7: bob が alice の投稿 p3 に応募
 insert into public.sessions
   (id, applicant_id, recipient_id, consultant_id, teller_id, initiated_by, post_id)
 values
   ('00000000-0000-0000-0000-000000000505', '00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000f1',
    '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f2', 'teller',
-   '00000000-0000-0000-0000-000000000a01');
+   '00000000-0000-0000-0000-000000000a01'),
+  ('00000000-0000-0000-0000-000000000507', '00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000f1',
+   '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f2', 'teller',
+   '00000000-0000-0000-0000-000000000a03');
 
 -- 1. RLS が有効
 select ok(
@@ -152,6 +158,12 @@ select throws_ok(
   'P0001', null, '利用者は status を expired にできない'
 );
 
+-- 41. 申込んだ側は自分の申込みを拒否できない
+select throws_ok(
+  $$ update public.sessions set status = 'rejected' where id = '00000000-0000-0000-0000-000000000506' $$,
+  'P0001', null, '申込んだ側は pending → rejected にできない'
+);
+
 -- 17. delete はできない
 select throws_ok(
   $$ delete from public.sessions where id = '00000000-0000-0000-0000-000000000501' $$,
@@ -192,6 +204,12 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000
 select lives_ok(
   $$ update public.sessions set status = 'active' where id = '00000000-0000-0000-0000-000000000501' $$,
   '申し込まれた側は pending → active にできる'
+);
+
+-- 42. 申し込まれた側は拒否できる
+select lives_ok(
+  $$ update public.sessions set status = 'rejected' where id = '00000000-0000-0000-0000-000000000506' $$,
+  '申し込まれた側は pending → rejected にできる'
 );
 
 -- 22. 占い師は完了操作できない(相談者のみ)
@@ -237,6 +255,12 @@ reset role;
 -- ===== carol(相談者)が完了操作 =====
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000f3","role":"authenticated"}', true);
+
+-- 43. 利用者は auto_completed にできない(システムのみ)
+select throws_ok(
+  $$ update public.sessions set status = 'auto_completed' where id = '00000000-0000-0000-0000-000000000503' $$,
+  'P0001', null, '利用者は active → auto_completed にできない'
+);
 
 -- 27. 相談者は active → completed にできる
 select lives_ok(
@@ -319,6 +343,21 @@ reset role;
 select is(
   (select status from public.consultation_posts where id = '00000000-0000-0000-0000-000000000a01'),
   'closed', 'closed の投稿はセッションの状態変化で上書きされない'
+);
+
+-- ===== 投稿ステータスとの連動(s7: bob → alice の投稿 p3、投稿は閉じない)=====
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000f1","role":"authenticated"}', true);
+
+-- alice が承認(p3 は in_progress になる)してから完了する
+update public.sessions set status = 'active'    where id = '00000000-0000-0000-0000-000000000507';
+update public.sessions set status = 'completed' where id = '00000000-0000-0000-0000-000000000507';
+reset role;
+
+-- 44. closed でない投稿は、active なセッションが無くなると open に戻る
+select is(
+  (select status from public.consultation_posts where id = '00000000-0000-0000-0000-000000000a03'),
+  'open', 'active なセッションが無くなれば投稿は in_progress から open に戻る'
 );
 
 -- ===== 制約(postgres 権限)=====
