@@ -122,6 +122,19 @@ describe('createSessionFromUrl', () => {
     expect(result).toEqual({ status: 'error', errorCode: 'bad_jwt' });
   });
 
+  it('セッション確立のエラーにcodeが無ければerrorCodeはnull', async () => {
+    mockAuth.setSession.mockResolvedValue({
+      data: {},
+      error: { message: 'unknown' },
+    } as never);
+
+    const result = await createSessionFromUrl(
+      'aterune://auth/confirmed#access_token=invalid&refresh_token=invalid'
+    );
+
+    expect(result).toEqual({ status: 'error', errorCode: null });
+  });
+
   it('トークンもエラーも無ければno-paramsを返す', async () => {
     const result = await createSessionFromUrl('aterune://auth/confirmed');
 
