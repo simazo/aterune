@@ -59,6 +59,7 @@
     "postcss": "^8.5.26",
     "supabase": "^2.115.0",
     "tailwindcss": "^4.2.0",
+    "test-renderer": "~1.2.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
