@@ -10,17 +10,19 @@ import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
+const NO_PARAMS: EmailConfirmationResult = { status: 'no-params' };
+
 export function AuthConfirmed() {
   const router = useRouter();
   const url = useLinkingURL();
-  const [result, setResult] = useState<EmailConfirmationResult | null>(null);
+  const [confirmation, setConfirmation] = useState<EmailConfirmationResult | null>(null);
   const handledUrl = useRef<string | null>(null);
 
+  // URLが無い場合はstateを使わず、描画時に結果を決める
+  const result: EmailConfirmationResult | null = url ? confirmation : NO_PARAMS;
+
   useEffect(() => {
-    if (!url) {
-      setResult({ status: 'no-params' });
-      return;
-    }
+    if (!url) return;
     // 同じURLを二重に処理しない（StrictModeでのeffect二重実行対策）
     if (handledUrl.current === url) return;
     handledUrl.current = url;
@@ -30,7 +32,7 @@ export function AuthConfirmed() {
       if (confirmation.status === 'success') {
         await savePushTokenForCurrentUser();
       }
-      setResult(confirmation);
+      setConfirmation(confirmation);
     })();
   }, [url]);
 
