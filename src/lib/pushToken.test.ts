@@ -1,7 +1,9 @@
+import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import {
   deletePushTokenForCurrentDevice,
+  getCurrentPlatform,
   registerForPushNotificationsAsync,
   savePushTokenForCurrentUser,
 } from './pushToken';
@@ -15,7 +17,8 @@ jest.mock('expo-notifications', () => ({
   getExpoPushTokenAsync: jest.fn(),
 }));
 
-jest.mock('expo-device', () => ({ isDevice: true }));
+// __esModule を付けないと import * 側でコピーされ、replaceProperty の差し替えが pushToken.ts に届かない
+jest.mock('expo-device', () => ({ __esModule: true, isDevice: true }));
 
 jest.mock('expo-constants', () => ({
   expoConfig: { extra: { eas: { projectId: 'test-project-id' } } },
@@ -67,6 +70,31 @@ describe('registerForPushNotificationsAsync', () => {
     await expect(registerForPushNotificationsAsync()).resolves.toBeNull();
     expect(mockNotifications.getPermissionsAsync).not.toHaveBeenCalled();
   });
+
+  it('Androidでは通知チャンネルを作成してからtokenを返す', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+
+    await expect(registerForPushNotificationsAsync()).resolves.toBe(TOKEN);
+    expect(mockNotifications.setNotificationChannelAsync).toHaveBeenCalledWith('default', {
+      name: 'default',
+      importance: mockNotifications.AndroidImportance.DEFAULT,
+    });
+  });
+
+  it('実機でなければ許可を確認せずnullを返す', async () => {
+    jest.replaceProperty(Device, 'isDevice', false);
+
+    await expect(registerForPushNotificationsAsync()).resolves.toBeNull();
+    expect(mockNotifications.getPermissionsAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe('getCurrentPlatform', () => {
+  it.each(['ios', 'android', 'web'] as const)('Platform.OSが%sなら%sを返す', (os) => {
+    jest.replaceProperty(Platform, 'OS', os);
+
+    expect(getCurrentPlatform()).toBe(os);
+  });
 });
 
 describe('savePushTokenForCurrentUser', () => {
@@ -100,6 +128,15 @@ describe('savePushTokenForCurrentUser', () => {
 
     expect(mockSupabase.from).not.toHaveBeenCalled();
   });
+
+  it('upsertが失敗しても例外を投げずに終わる', async () => {
+    const upsert = jest.fn().mockResolvedValue({ error: { message: 'upsert failed' } });
+    mockSupabase.from.mockReturnValue({ upsert } as never);
+    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } } as never);
+
+    await expect(savePushTokenForCurrentUser()).resolves.toBeUndefined();
+    expect(upsert).toHaveBeenCalled();
+  });
 });
 
 describe('deletePushTokenForCurrentDevice', () => {
@@ -111,6 +148,15 @@ describe('deletePushTokenForCurrentDevice', () => {
     await deletePushTokenForCurrentDevice();
 
     expect(mockSupabase.from).toHaveBeenCalledWith('push_tokens');
+    expect(eq).toHaveBeenCalledWith('expo_push_token', TOKEN);
+  });
+
+  it('deleteが失敗しても例外を投げずに終わる', async () => {
+    const eq = jest.fn().mockResolvedValue({ error: { message: 'delete failed' } });
+    const del = jest.fn().mockReturnValue({ eq });
+    mockSupabase.from.mockReturnValue({ delete: del } as never);
+
+    await expect(deletePushTokenForCurrentDevice()).resolves.toBeUndefined();
     expect(eq).toHaveBeenCalledWith('expo_push_token', TOKEN);
   });
 
