@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 import { createSessionFromUrl, signOut, signUpWithEmail } from './auth';
-import { deletePushTokenForCurrentDevice } from './pushToken';
+import { deletePushTokenForCurrentDevice } from './push-token';
 import { supabase } from './supabase';
 
 jest.mock('./supabase', () => ({
@@ -13,7 +13,7 @@ jest.mock('./supabase', () => ({
   },
 }));
 
-jest.mock('./pushToken', () => ({
+jest.mock('./push-token', () => ({
   deletePushTokenForCurrentDevice: jest.fn(),
 }));
 

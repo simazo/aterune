@@ -6,7 +6,7 @@ import {
   getCurrentPlatform,
   registerForPushNotificationsAsync,
   savePushTokenForCurrentUser,
-} from './pushToken';
+} from './push-token';
 import { supabase } from './supabase';
 
 jest.mock('expo-notifications', () => ({
@@ -17,7 +17,7 @@ jest.mock('expo-notifications', () => ({
   getExpoPushTokenAsync: jest.fn(),
 }));
 
-// __esModule を付けないと import * 側でコピーされ、replaceProperty の差し替えが pushToken.ts に届かない
+// __esModule を付けないと import * 側でコピーされ、replaceProperty の差し替えが push-token.ts に届かない
 jest.mock('expo-device', () => ({ __esModule: true, isDevice: true }));
 
 jest.mock('expo-constants', () => ({

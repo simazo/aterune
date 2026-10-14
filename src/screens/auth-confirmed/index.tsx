@@ -4,7 +4,7 @@ import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { createSessionFromUrl, type EmailConfirmationResult } from '@/lib/auth';
-import { savePushTokenForCurrentUser } from '@/lib/pushToken';
+import { savePushTokenForCurrentUser } from '@/lib/push-token';
 import { useLinkingURL } from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';

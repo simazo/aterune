@@ -5,7 +5,7 @@ import { Input, InputField } from '@/components/ui/input';
 import { Link, LinkText } from '@/components/ui/link';
 import { VStack } from '@/components/ui/vstack';
 import { useErrorToast } from '@/hooks/use-error-toast';
-import { savePushTokenForCurrentUser } from '@/lib/pushToken';
+import { savePushTokenForCurrentUser } from '@/lib/push-token';
 import { supabase } from '@/lib/supabase';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';

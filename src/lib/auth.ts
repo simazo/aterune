@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { deletePushTokenForCurrentDevice } from './pushToken';
+import { deletePushTokenForCurrentDevice } from './push-token';
 import { supabase } from './supabase';
 
 const MOBILE_AUTH_REDIRECT_URL = 'aterune://auth/confirmed';
