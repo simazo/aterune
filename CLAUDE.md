@@ -76,7 +76,36 @@ npx supabase gen types typescript --local > src/types/database.types.ts
 - スキーマはすべてマイグレーションで管理する（1マイグレーションにつき1テーブル／1機能）。業務ルールはクライアントではなく Postgres の RLS ポリシーとトリガーで守る。例：`sessions` の status 遷移は `guard_session_status_change` がガードする（pending→active/rejected は申込まれた側のみ、completed は相談者のみ、expired/auto_completed はシステム＝`auth.uid()` が null の場合のみ）。
 - 役割はセッションごとに決まり、同じユーザーが相談者にも占い師にもなれる（`profiles.is_teller` は `teller_profiles` からトリガーで同期）。セッションの起点は、相談者からの申込みか、占い師による `consultation_posts`（掲示板投稿）への応募のどちらか（`initiated_by`）。
 - `notifications` の行は `sessions` のトリガーで作られる。外部へのプッシュ送信は Vault + `pg_net` で作る予定（拡張は有効化済み）。
-- 規約：トリガー名は `<table>_<purpose>`（例：共通関数 `set_updated_at()` を使う `sessions_set_updated_at`）、ポリシー名は `<table>_<action>_<scope>`。トリガー関数には `set search_path = ''` を付ける。`security definer` は他テーブルへの書き込みなど RLS を越える必要がある場合のみ付ける（`guard_session_status_change` のように呼び出し元の権限で動けばよいガード用トリガーには付けない）。どちらの場合もオブジェクト名はスキーマ修飾して書く。テーブルとカラムには日本語の `comment on` を付ける。
+- 規約：トリガー関数には `set search_path = ''` を付ける。`security definer` は他テーブルへの書き込みなど RLS を越える必要がある場合のみ付ける（`guard_session_status_change` のように呼び出し元の権限で動けばよいガード用トリガーには付けない）。どちらの場合もオブジェクト名はスキーマ修飾して書く。テーブルとカラムには日本語の `comment on` を付ける。
+
+### 命名規則
+
+#### ファイル・フォルダ
+- kebab-case に統一する（例：`use-auth.ts`、`auth-provider.tsx`、`screens/auth-confirmed/`）。
+- プラットフォーム別の実装は `.web.tsx` などの接尾辞で分ける。テストは `<対象>.test.ts(x)`。
+- expo-router の予約名（`_layout.tsx`、`(group)/`、`+not-found.tsx` など）はその規約に従う。
+
+#### TypeScript / React
+- コンポーネント・型：PascalCase（例：`AuthProvider`、`LoginFormValues`）。
+- ルートファイルの default export は `<Name>Screen` / `<Name>Layout`、`screens/<name>/` の named export は接尾辞なしの `<Name>`（例：`LoginScreen` が `Login` を描画）。
+- hooks：`use` で始まる camelCase（例：`useAuth`）。
+- 関数・変数：camelCase。真偽値は `is` / `has` / `can` で始める（例：`isLoading`、`hasError`、`canSubmit`）。
+- イベントハンドラ：props 名は `onXxx`、それに渡す実装は `handleXxx`（例：`onPress={handleSubmit}`）。
+- 定数（モジュール直下の固定値）：UPPER_SNAKE_CASE（例：`MOBILE_AUTH_REDIRECT_URL`）。
+- zod スキーマは `<name>Schema`、推論した型は `<Name>FormValues`（例：`loginSchema` / `LoginFormValues`）。
+- テーブル行の型エイリアスはテーブル名を単数形の PascalCase にする（例：`push_tokens` → `PushToken`）。
+
+#### データベース
+- 識別子はすべて snake_case で、引用符で囲まない（ポリシー名も含む）。
+- テーブル：複数形（例：`sessions`、`teller_profiles`）。
+- カラム：外部キーは `<名詞>_id`、日時は `<動詞の過去分詞>_at`（例：`created_at`、`expires_at`）、真偽値は `is_*` / `requires_*`。
+- 関数：`<動詞>_<目的語>`（例：`sync_is_teller`、`notify_session_status_change`）。
+- トリガー：`<table>_<purpose>`（例：共通関数 `set_updated_at()` を使う `sessions_set_updated_at`）。例外として `auth.users` の `on_auth_user_created` は Supabase 公式の慣習名のまま使う。
+- ポリシー：`<table>_<action>_<scope>`（例：`sessions_select_own`、`tags_select_public`）。
+- インデックス：`<table>_<column>_idx`（例：`sessions_teller_id_idx`）。
+- 制約：Postgres の自動命名に合わせて種類ごとの接尾辞を付ける。CHECK は `<table>_<内容>_check`、UNIQUE は `_key`、外部キーは `_fkey`（例：`sessions_status_check`、`push_tokens_user_id_expo_push_token_key`）。
+- PL/pgSQL のローカル変数は `v_` で始める（例：`v_status`）。
+- マイグレーション：`<timestamp>_<動詞>_<対象>.sql`（例：`create_sessions`）。`npx supabase migration new <動詞>_<対象>` で作る。
 
 ### テスト
 - **配置の基本**：テストは対象と同じフォルダに `*.test.ts(x)` で置く（例：`src/lib/auth.test.ts`、`src/screens/<name>/schema.test.ts`）。
