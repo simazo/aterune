@@ -18,7 +18,7 @@ create table public.profiles (
   constraint profiles_active_mode_check
     check (active_mode in ('consultant', 'teller')),
   -- 占い師登録がない人は、占い師モードにできない
-  constraint profiles_teller_mode_requires_teller
+  constraint profiles_teller_mode_requires_teller_check
     check (active_mode = 'consultant' or is_teller)
 );
 

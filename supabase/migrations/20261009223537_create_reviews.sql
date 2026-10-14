@@ -7,7 +7,7 @@ create table public.reviews (
   rating      smallint not null check (rating between 1 and 5),
   comment     text,
   created_at  timestamptz not null default now(),
-  constraint reviews_no_self_review check (reviewer_id <> reviewee_id)
+  constraint reviews_no_self_review_check check (reviewer_id <> reviewee_id)
 );
 
 comment on table  public.reviews             is '相談者から占い師への評価(一方向)';

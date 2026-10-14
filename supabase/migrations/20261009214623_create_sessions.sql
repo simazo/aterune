@@ -24,12 +24,12 @@ create table public.sessions (
     check (status in ('pending', 'active', 'completed', 'auto_completed', 'rejected', 'expired')),
   constraint sessions_initiated_by_check
     check (initiated_by in ('consultant', 'teller')),
-  constraint sessions_no_self_session
+  constraint sessions_no_self_session_check
     check (applicant_id <> recipient_id),
-  constraint sessions_consultant_teller_match
+  constraint sessions_consultant_teller_match_check
     check ((consultant_id = applicant_id and teller_id = recipient_id)
         or (consultant_id = recipient_id and teller_id = applicant_id)),
-  constraint sessions_initiated_by_role_match
+  constraint sessions_initiated_by_role_match_check
     check ((initiated_by = 'consultant' and applicant_id = consultant_id)
         or (initiated_by = 'teller'     and applicant_id = teller_id))
 );
