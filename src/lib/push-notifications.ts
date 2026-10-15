@@ -6,7 +6,6 @@ import { Platform } from 'react-native';
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
   // Web版は未対応（app.jsonにVAPID公開鍵の設定が必要なため）
   if (Platform.OS === 'web') {
-    console.log('プッシュ通知はWeb版では未対応です');
     return null;
   }
 
@@ -20,7 +19,6 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
 
   // 実機のみ対応(シミュレータ/エミュレータは非対応)
   if (!Device.isDevice) {
-    console.log('プッシュ通知は実機でのみ動作します');
     return null;
   }
 
@@ -34,8 +32,8 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     finalStatus = status;
   }
 
+  // 許可が得られなければtokenは取得しない
   if (finalStatus !== 'granted') {
-    console.log('プッシュ通知の許可が得られませんでした');
     return null;
   }
 

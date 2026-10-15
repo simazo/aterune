@@ -35,13 +35,12 @@ const mockSupabase = jest.mocked(supabase);
 const mockLogger = jest.mocked(logger);
 
 afterEach(() => {
-  // replacePropertyで差し替えたPlatform.OSやconsole.logのspyを元に戻す
+  // replacePropertyで差し替えたPlatform.OSを元に戻す
   jest.restoreAllMocks();
 });
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.spyOn(console, 'log').mockImplementation(() => {});
   mockNotifications.getPermissionsAsync.mockResolvedValue({ status: 'granted' } as never);
   mockNotifications.getExpoPushTokenAsync.mockResolvedValue({ data: TOKEN } as never);
 });

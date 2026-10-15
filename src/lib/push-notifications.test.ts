@@ -22,13 +22,12 @@ const TOKEN = 'ExponentPushToken[test]';
 const mockNotifications = jest.mocked(Notifications);
 
 afterEach(() => {
-  // replacePropertyで差し替えたPlatform.OSやconsole.logのspyを元に戻す
+  // replacePropertyで差し替えたPlatform.OSやDevice.isDeviceを元に戻す
   jest.restoreAllMocks();
 });
 
 beforeEach(() => {
   jest.clearAllMocks();
-  jest.spyOn(console, 'log').mockImplementation(() => {});
   mockNotifications.getPermissionsAsync.mockResolvedValue({ status: 'granted' } as never);
   mockNotifications.getExpoPushTokenAsync.mockResolvedValue({ data: TOKEN } as never);
 });
