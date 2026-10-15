@@ -55,6 +55,14 @@ describe('AuthProvider', () => {
     expect(result.current).toEqual({ session: null, loading: false });
   });
 
+  it('getSessionが失敗したら未ログインとしてloadingを終える', async () => {
+    mockAuth.getSession.mockRejectedValue(new Error('storage error'));
+
+    const { result } = await renderAuth();
+
+    expect(result.current).toEqual({ session: null, loading: false });
+  });
+
   it('onAuthStateChangeでログイン・ログアウトするとsessionが切り替わる', async () => {
     const { result } = await renderAuth();
 

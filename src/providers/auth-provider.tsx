@@ -14,10 +14,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    // 取得に失敗しても未ログインとして扱い、loadingを終えて画面を進める
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => setSession(session))
+      .catch(() => setSession(null))
+      .finally(() => setLoading(false));
 
     const {
       data: { subscription },
