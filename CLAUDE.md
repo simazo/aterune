@@ -101,9 +101,31 @@ supabase/
 - **メール確認フロー**：Supabase クライアントは `detectSessionInUrl: false` なので、`src/lib/auth.ts` の `createSessionFromUrl` が URL のフラグメント／クエリからトークンを自前で読み取り、`setSession` を呼ぶ。戻り先はモバイルが `aterune://auth/confirmed`、Web が `${window.location.origin}/auth/confirmed`（各オリジンを Supabase の Redirect URLs 許可リストに登録する必要がある）。
 - **Push token**（`src/lib/push-token.ts`）：ログイン後／メール確認からの自動ログイン後に `push_tokens` へ保存する。RLS 上ログイン中しか削除できないため、`signOut()` では `supabase.auth.signOut()` を呼ぶ*前に*削除する。Web とシミュレータでは早期リターンする。
 - **Supabase クライアント**（`src/lib/supabase.ts`）：`window` が無い環境（静的 Web の事前レンダリング）ではストレージとトークン自動更新を無効にしている。
-- **UI**：gluestack-ui v5 のコンポーネントを `src/components/ui/` にコピーして使用（一部に `.web.tsx` の Web 版あり）。スタイルは NativeWind v5 / Tailwind v4（`global.css`、`metro.config.js`）。フォームは react-hook-form + `zodResolver`、エラーは `useErrorToast` で表示する。
+- **UI**：「UI（gluestack-ui / NativeWind）」節を参照。フォームは react-hook-form + `zodResolver`、エラーは `useErrorToast` で表示する。
 - **型**：`src/types/database.types.ts` は自動生成なので手で編集しない。`src/types/index.ts` で `Tables<'...'>` を使った行の型エイリアス（`Profile`、`Session` など）を公開している。
 - パスエイリアス `@/` → `src/`（`tsconfig.json` と `babel.config.js` の両方で設定）。
+
+### UI（gluestack-ui / NativeWind）
+- gluestack-ui v5 のコンポーネントを `src/components/ui/` にコピーして使う（一部に `.web.tsx` の Web 版あり）。スタイルは NativeWind v5 / Tailwind v4（`global.css`、`metro.config.js`）。
+- **スタイル**：NativeWind の `className` で書く。`style={{}}` は動的な値（アニメーションの値など）を除いて使わない。
+- **コンポーネント**：React Native のコア部品ではなく gluestack-ui のコンポーネントを使う。仮実装でも同じ。
+- **`components/ui/` は書き換えない**：独自の見た目・挙動を加えてアプリ全体で揃えたいものは、`src/components/` で包んだ共通コンポーネントを作る。
+- **コンポーネントの追加**：`components/ui/` に無いものを使うときは、依存パッケージの追加を伴うことがあるため、事前に承認を得てから追加する。
+
+#### React Native → gluestack-ui 対応表
+- **機械的に決まるもの**：TextInput → Input + InputField、Button（ボタン用途）→ Button + ButtonText、ActivityIndicator → Spinner、Image → Image、Switch → Switch、ScrollView → ScrollView、チェックボックス → Checkbox、ラジオボタン → Radio、セレクトボックス → Select、モーダル → Modal、下からせり上がるメニュー → Actionsheet、ツールチップ → Tooltip、アバター画像 → Avatar、バッジ・タグ → Badge、カード → Card、リンクテキスト → Link。
+- **View → Box / VStack / HStack / Center**：並べ方の役割で選ぶ。縦並び＝VStack、横並び＝HStack、中央寄せ＝Center、並べ方にこだわらない箱＝Box。グリッド状に並べるなら Grid、区切り線なら Divider。
+- **TouchableOpacity → Button / Pressable**：明確なアクション（サインイン・送信・確定など）は Button。カードをタップして詳細へ遷移するなど、ボタンではないタップ領域は Pressable。
+- **Text → Text / Heading**：フォントサイズではなく役割で選ぶ。画面タイトル・セクション見出しは Heading、それ以外（本文・ラベル・キャプションなど）は Text。
+- **メッセージ表示 → FormControlError / Toast / AlertDialog**：入力欄のバリデーションエラーは FormControl + FormControlError。自動で消える確認不要の通知（保存完了・通信エラーなど）は Toast（`useErrorToast`）。ユーザーの選択・確認が必要なもの（削除確認・ログアウト確認など）は AlertDialog。
+
+#### 仮実装
+- 仮実装の箇所には `// TODO: 仮実装` に続けて、何が仮なのか・本実装で何をすべきかを一言添える。
+  ```ts
+  // TODO: 仮実装。バックエンド動作確認のため最低限の表示のみ。
+  // 本実装時はデザイン方針確定後に gluestack-ui コンポーネントで作り直す
+  ```
+- 既存の例外：`src/components/animated-icon.tsx`（`.web.tsx`・`.module.css`）は Expo テンプレートのままの仮実装で、`StyleSheet` とコア部品を使っている。書き直しは issue で管理する。
 
 ### データベース（`supabase/`）
 - スキーマはすべてマイグレーションで管理する（1マイグレーションにつき1テーブル／1機能）。業務ルールはクライアントではなく Postgres の RLS ポリシーとトリガーで守る。例：`sessions` の status 遷移は `guard_session_status_change` がガードする（pending→active/rejected は申込まれた側のみ、completed は相談者のみ、expired/auto_completed はシステム＝`auth.uid()` が null の場合のみ）。
