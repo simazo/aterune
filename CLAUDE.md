@@ -66,6 +66,35 @@ npx supabase test db --db-url "postgresql://postgres.kwjgxjtsyjzajdcaqnpd:<DBパ
 
 ## アーキテクチャ
 
+### フォルダ構成
+設定ファイル（`app.json`、`eas.json` など）はルートに、アプリのコードはすべて `src/` に置く。（未作成）のフォルダは必要になった時点で作る。
+
+```
+src/
+├── app/            # ルーティング専用。screens を描画するだけの薄いファイル（テストは置かない）
+├── screens/<name>/ # 画面単位の UI・フォーム処理（index.tsx、schema.ts）
+│   └── components/ # その画面専用のサブコンポーネント（未作成）
+├── components/     # 2画面以上で使う共通コンポーネント
+│   └── ui/         # gluestack-ui からコピーしたコンポーネント
+├── api/            # Supabase への問い合わせ。テーブル・機能単位でまとめる（未作成）
+├── lib/            # 外部 SDK の初期化・設定（supabase.ts など）
+├── utils/          # 外部に依存しない純粋な関数（未作成）
+├── hooks/          # 再利用するカスタムフック（use-*.ts）
+├── providers/      # Context Provider
+├── types/          # 型定義（database.types.ts は自動生成）
+├── test-utils/     # テスト用の共通処理（未作成）
+└── __tests__/      # 複数画面にまたがるテスト（ルート・レイアウトなど）
+supabase/
+├── migrations/     # スキーマ（1マイグレーションにつき1テーブル／1機能）
+├── tests/database/ # pgTAP テスト
+└── functions/      # Edge Functions（未作成）
+```
+
+- **ルートファイルを薄くする理由**：UI とロジックを `screens/` に置くと、同じ画面を複数のルートから使え、ルートに依存せずテストできる。
+- **データの取得・更新は `api/` に置く**：画面やフックは `supabase` を直接呼ばず、`api/` の関数を呼ぶ。画面のテストでは `api/` をモックすればよい。`lib/` は SDK の初期化・設定だけにする。
+  - 現状は移行前で、`lib/auth.ts`・`lib/push-token.ts` に Supabase への問い合わせがあり、ログイン画面は `supabase` を直接呼んでいる。新しく書くコードは `api/` に置き、既存分の移行は別作業で行う。
+- **Service Role Key はアプリのコードに置かない**：RLS を越える処理（退会時のユーザー削除、外部 API への送信、Webhook など）は、DB 内で完結するものは `security definer` の関数・トリガー、外部とのやり取りを伴うものは Supabase Edge Functions（`supabase/functions/`）に書く。Expo の API ルート（`app/api/`）や `server/` フォルダは使わない（Web は `static` 出力で、別にサーバーを運用しないため）。
+
 ### アプリ層（`src/`）
 - **ルーティング**（`src/app/`、expo-router）：ルートファイルは `src/screens/<name>/` のコンポーネントを描画するだけの薄いラッパー。UI・フォーム処理は screens 側が持ち、zod の `schema.ts`（と `schema.test.ts`）を同じフォルダに置く。
 - **認証によるアクセス制御**：`AuthProvider`（`src/providers/auth-provider.tsx`）が Supabase のセッションを保持し、`useAuth()`（`src/hooks/use-auth.ts`）で読む。ルートレイアウトは `loading` の完了を待ってから描画し、`(auth)` グループのレイアウトはログイン済みユーザーを `/(app)` へ、`(app)` グループのレイアウトは未ログインユーザーを `/(auth)/login` へリダイレクトする。`src/app/auth/`（例：`/auth/confirmed`）はどちらのグループにも属さないため、認証状態に関係なく表示される。
