@@ -47,7 +47,7 @@ grant select                                  on public.messages to authenticate
 grant insert (session_id, sender_id, content) on public.messages to authenticated;
 grant all                                     on public.messages to service_role;
 
-create policy "messages_select_own"
+create policy messages_select_own
   on public.messages for select
   to authenticated
   using (
@@ -58,7 +58,7 @@ create policy "messages_select_own"
     )
   );
 
-create policy "messages_insert_own"
+create policy messages_insert_own
   on public.messages for insert
   to authenticated
   with check (

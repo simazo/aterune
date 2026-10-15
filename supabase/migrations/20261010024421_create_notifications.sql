@@ -36,12 +36,12 @@ grant select           on public.notifications to authenticated;
 grant update (is_read) on public.notifications to authenticated;
 grant all              on public.notifications to service_role;
 
-create policy "notifications_select_own"
+create policy notifications_select_own
   on public.notifications for select
   to authenticated
   using ((select auth.uid()) = recipient_id);
 
-create policy "notifications_update_own"
+create policy notifications_update_own
   on public.notifications for update
   to authenticated
   using      ((select auth.uid()) = recipient_id)

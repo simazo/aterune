@@ -19,17 +19,17 @@ grant select         on public.teller_tags to anon, authenticated;
 grant insert, delete on public.teller_tags to authenticated;
 grant all            on public.teller_tags to service_role;
 
-create policy "teller_tags_select_public"
+create policy teller_tags_select_public
   on public.teller_tags for select
   to anon, authenticated
   using (true);
 
-create policy "teller_tags_insert_own"
+create policy teller_tags_insert_own
   on public.teller_tags for insert
   to authenticated
   with check ((select auth.uid()) = teller_id);
 
-create policy "teller_tags_delete_own"
+create policy teller_tags_delete_own
   on public.teller_tags for delete
   to authenticated
   using ((select auth.uid()) = teller_id);

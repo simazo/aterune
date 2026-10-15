@@ -251,17 +251,17 @@ grant insert (applicant_id, recipient_id, consultant_id, teller_id, initiated_by
 grant update (status) on public.sessions to authenticated;
 grant all on public.sessions to service_role;
 
-create policy "sessions_select_own"
+create policy sessions_select_own
   on public.sessions for select
   to authenticated
   using ((select auth.uid()) in (applicant_id, recipient_id));
 
-create policy "sessions_insert_own"
+create policy sessions_insert_own
   on public.sessions for insert
   to authenticated
   with check ((select auth.uid()) = applicant_id);
 
-create policy "sessions_update_own"
+create policy sessions_update_own
   on public.sessions for update
   to authenticated
   using      ((select auth.uid()) in (applicant_id, recipient_id))

@@ -19,17 +19,17 @@ revoke all on public.favorites from anon, authenticated;
 grant select, insert, delete on public.favorites to authenticated;
 grant all                    on public.favorites to service_role;
 
-create policy "favorites_select_own"
+create policy favorites_select_own
   on public.favorites for select
   to authenticated
   using ((select auth.uid()) = consultant_id);
 
-create policy "favorites_insert_own"
+create policy favorites_insert_own
   on public.favorites for insert
   to authenticated
   with check ((select auth.uid()) = consultant_id);
 
-create policy "favorites_delete_own"
+create policy favorites_delete_own
   on public.favorites for delete
   to authenticated
   using ((select auth.uid()) = consultant_id);

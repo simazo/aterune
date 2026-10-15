@@ -26,7 +26,7 @@ grant update (birthdate, gender)             on public.profile_private_details t
 grant all on public.profile_private_details to service_role;
 
 -- 本人は自分の行を読める
-create policy "profile_private_details_select_own"
+create policy profile_private_details_select_own
   on public.profile_private_details for select
   to authenticated
   using ((select auth.uid()) = profile_id);
@@ -35,7 +35,7 @@ create policy "profile_private_details_select_own"
 --   ・相談者が自分から申し込んだ pending
 --   ・承認後(active)と、完了後(completed / auto_completed)
 -- 占い師から応募した pending(相談者が未承認)と、rejected / expired は読めない。
-create policy "profile_private_details_select_teller_of_session"
+create policy profile_private_details_select_teller_of_session
   on public.profile_private_details for select
   to authenticated
   using (
@@ -50,12 +50,12 @@ create policy "profile_private_details_select_teller_of_session"
     )
   );
 
-create policy "profile_private_details_insert_own"
+create policy profile_private_details_insert_own
   on public.profile_private_details for insert
   to authenticated
   with check ((select auth.uid()) = profile_id);
 
-create policy "profile_private_details_update_own"
+create policy profile_private_details_update_own
   on public.profile_private_details for update
   to authenticated
   using      ((select auth.uid()) = profile_id)

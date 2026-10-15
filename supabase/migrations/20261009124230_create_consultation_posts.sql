@@ -36,24 +36,24 @@ grant delete on public.consultation_posts to authenticated;
 grant all    on public.consultation_posts to service_role;
 
 -- select: 閉じた投稿は本人以外に見えない
-create policy "consultation_posts_select_anon"
+create policy consultation_posts_select_anon
   on public.consultation_posts for select
   to anon
   using (status <> 'closed');
 
-create policy "consultation_posts_select_authenticated"
+create policy consultation_posts_select_authenticated
   on public.consultation_posts for select
   to authenticated
   using (status <> 'closed' or (select auth.uid()) = consultant_id);
 
 -- insert: 自分名義のみ(status は列 GRANT により常に open で始まる)
-create policy "consultation_posts_insert_own"
+create policy consultation_posts_insert_own
   on public.consultation_posts for insert
   to authenticated
   with check ((select auth.uid()) = consultant_id);
 
 -- update: 自分の投稿のみ。本人が設定できる status は open / closed だけ
-create policy "consultation_posts_update_own"
+create policy consultation_posts_update_own
   on public.consultation_posts for update
   to authenticated
   using ((select auth.uid()) = consultant_id)
@@ -62,7 +62,7 @@ create policy "consultation_posts_update_own"
     and status in ('open', 'closed')
   );
 
-create policy "consultation_posts_delete_own"
+create policy consultation_posts_delete_own
   on public.consultation_posts for delete
   to authenticated
   using ((select auth.uid()) = consultant_id);

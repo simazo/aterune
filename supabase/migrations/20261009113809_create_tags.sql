@@ -16,7 +16,7 @@ grant select on public.tags to anon, authenticated;
 grant all    on public.tags to service_role;
 
 -- RLS ポリシー: 誰でも読める
-create policy "tags_select_public"
+create policy tags_select_public
   on public.tags
   for select
   to anon, authenticated

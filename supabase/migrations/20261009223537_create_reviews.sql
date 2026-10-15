@@ -55,14 +55,14 @@ grant insert (session_id, reviewer_id, reviewee_id, rating, comment) on public.r
 grant all on public.reviews to service_role;
 
 -- 評価は公開情報
-create policy "reviews_select_public"
+create policy reviews_select_public
   on public.reviews for select
   to anon, authenticated
   using (true);
 
 -- 投稿できるのは、そのセッションの相談者が、担当の占い師に対して、
 -- 相談者の完了操作(completed)から7日以内に限る。auto_completed は不可。
-create policy "reviews_insert_own"
+create policy reviews_insert_own
   on public.reviews for insert
   to authenticated
   with check (

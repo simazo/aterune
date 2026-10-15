@@ -23,17 +23,17 @@ grant select, delete                                 on public.push_tokens to au
 grant insert (user_id, expo_push_token, platform)    on public.push_tokens to authenticated;
 grant all                                            on public.push_tokens to service_role;
 
-create policy "push_tokens_select_own"
+create policy push_tokens_select_own
   on public.push_tokens for select
   to authenticated
   using ((select auth.uid()) = user_id);
 
-create policy "push_tokens_insert_own"
+create policy push_tokens_insert_own
   on public.push_tokens for insert
   to authenticated
   with check ((select auth.uid()) = user_id);
 
-create policy "push_tokens_delete_own"
+create policy push_tokens_delete_own
   on public.push_tokens for delete
   to authenticated
   using ((select auth.uid()) = user_id);
