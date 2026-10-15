@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { getCurrentPlatform, registerForPushNotificationsAsync } from '@/lib/push-notifications';
 import { supabase } from '@/lib/supabase';
 
@@ -20,9 +21,7 @@ export async function savePushTokenForCurrentUser() {
   );
 
   if (error) {
-    console.log('push_tokens登録エラー:', error.message);
-  } else {
-    console.log('push_tokens登録成功:', token);
+    logger.warn('push_tokens登録エラー:', error.message);
   }
 }
 
@@ -34,8 +33,6 @@ export async function deletePushTokenForCurrentDevice() {
   const { error } = await supabase.from('push_tokens').delete().eq('expo_push_token', token);
 
   if (error) {
-    console.log('push_tokens削除エラー:', error.message);
-  } else {
-    console.log('push_tokens削除成功:', token);
+    logger.warn('push_tokens削除エラー:', error.message);
   }
 }

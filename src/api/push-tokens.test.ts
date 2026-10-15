@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
@@ -24,9 +25,14 @@ jest.mock('@/lib/supabase', () => ({
   },
 }));
 
+jest.mock('@/lib/logger', () => ({
+  logger: { debug: jest.fn(), warn: jest.fn() },
+}));
+
 const TOKEN = 'ExponentPushToken[test]';
 const mockNotifications = jest.mocked(Notifications);
 const mockSupabase = jest.mocked(supabase);
+const mockLogger = jest.mocked(logger);
 
 afterEach(() => {
   // replacePropertyで差し替えたPlatform.OSやconsole.logのspyを元に戻す
@@ -72,13 +78,14 @@ describe('savePushTokenForCurrentUser', () => {
     expect(mockSupabase.from).not.toHaveBeenCalled();
   });
 
-  it('upsertが失敗しても例外を投げずに終わる', async () => {
+  it('upsertが失敗しても例外を投げずに終わり、warnでログを出す', async () => {
     const upsert = jest.fn().mockResolvedValue({ error: { message: 'upsert failed' } });
     mockSupabase.from.mockReturnValue({ upsert } as never);
     mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } } as never);
 
     await expect(savePushTokenForCurrentUser()).resolves.toBeUndefined();
     expect(upsert).toHaveBeenCalled();
+    expect(mockLogger.warn).toHaveBeenCalledWith('push_tokens登録エラー:', 'upsert failed');
   });
 });
 
@@ -94,13 +101,14 @@ describe('deletePushTokenForCurrentDevice', () => {
     expect(eq).toHaveBeenCalledWith('expo_push_token', TOKEN);
   });
 
-  it('deleteが失敗しても例外を投げずに終わる', async () => {
+  it('deleteが失敗しても例外を投げずに終わり、warnでログを出す', async () => {
     const eq = jest.fn().mockResolvedValue({ error: { message: 'delete failed' } });
     const del = jest.fn().mockReturnValue({ eq });
     mockSupabase.from.mockReturnValue({ delete: del } as never);
 
     await expect(deletePushTokenForCurrentDevice()).resolves.toBeUndefined();
     expect(eq).toHaveBeenCalledWith('expo_push_token', TOKEN);
+    expect(mockLogger.warn).toHaveBeenCalledWith('push_tokens削除エラー:', 'delete failed');
   });
 
   it('tokenが取れなければ何もしない', async () => {
