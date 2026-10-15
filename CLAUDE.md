@@ -45,6 +45,7 @@ npm run lint                   # expo lint
 npm test                       # jest（preset: jest-expo）
 npx jest src/lib/auth.test.ts  # 1ファイルだけ実行
 npx jest -t "createSessionFromUrl"  # テスト名で絞り込み
+npm run test:watch             # 変更を監視して再実行
 
 # Supabase（devDependency の `supabase` でローカルスタックを動かす）
 npx supabase start
@@ -182,12 +183,37 @@ supabase/
 - マイグレーション：`<timestamp>_<動詞>_<対象>.sql`（例：`create_sessions`）。`npx supabase migration new <動詞>_<対象>` で作る。
 
 ### テスト
-- **配置の基本**：テストは対象と同じフォルダに `*.test.ts(x)` で置く（例：`src/lib/auth.test.ts`、`src/screens/<name>/schema.test.ts`）。
-- **例外（`src/app/`）**：`src/app/` 配下はすべてルートとして扱われるため、ルート・レイアウトのテストは `src/__tests__/` に置く。
+何をどこまでテストするかは「作業の進め方 › テストファースト」に従う。この節は書き方と置き場所の規約。
+
+#### ツール・環境
+- Jest（`jest-expo`）＋ React Native Testing Library v14。ルーティングのテストは `expo-router/testing-library` の `renderRouter` を使う。
+- `babel.config.js`：`nativewind/babel` が `@react-native/jest-preset` の RN モックまで書き換えると循環 import で落ちるため、そのファイルだけ対象から外している。アプリ実行時の挙動は変わらない。
+- `package.json` の `jest.transformIgnorePatterns` は未設定。gluestack-ui を使う画面をテストすると `@gluestack-ui/core` の ESM が変換されず SyntaxError になるため、その前に jest-expo の初期値の許可リストへ `@gluestack-ui` を加える必要がある。ESM で配布されるライブラリで「Unexpected token 'export'」が出たら同様に追加する。
+
+#### 配置
+- **基本**：テストは対象と同じフォルダに `<対象>.test.ts(x)` で置く（例：`src/lib/auth.test.ts`、`src/screens/<name>/schema.test.ts`、1画面のテストなら `src/screens/<name>/index.test.tsx`）。
+- **例外（`src/app/`）**：`src/app/` 配下はすべてルートとして扱われるため、ルート・レイアウトなど複数画面にまたがるテストは `src/__tests__/` に置く（例：`src/__tests__/layouts.test.tsx`）。
 - **共通モジュール**：テスト用の共通処理（独自の render、モックの準備など）は `src/test-utils/` に置く。`__tests__/` 内のファイルは名前に関係なく jest がテストとして実行するため、そこには置かない。
-- **全体設定・手動モック**：全テスト共通の設定はルートの `jest.setup.ts`（`setupFilesAfterEnv` に登録）、モジュール丸ごとの手動モックは jest の規約どおり `__mocks__/` に置く。
-- **モックの書き方**：`./supabase` などの lib モジュールは `jest.mock` でモックし、`Platform.OS` は `jest.replaceProperty` で差し替える。
-- **DB（pgTAP）**：マイグレーションごとに対応する pgTAP テスト `supabase/tests/database/<table>.test.sql` を用意する（`begin; … rollback;` で囲み、`auth.users` にテストデータを入れ、ロールを切り替えて RLS を検証する）。リモートで実行するときは `--linked` ではなく `--db-url` で `postgres` ロールとして接続する（「コマンド」節参照）。`--linked` は CLI の一時ロール `cli_login_postgres` で接続し、このロールには pgTAP が入る `extensions` スキーマの使用権限が無く、`reset role` でもこのロールに戻るため、テストが動かない。
+- **全体設定・手動モック**：全テスト共通の設定はルートの `jest.setup.ts`（未作成。作るときは `setupFilesAfterEnv` に登録）、モジュール丸ごとの手動モックは jest の規約どおり `__mocks__/` に置く。
+
+#### テストで確かめるもの・手動で確かめるもの
+- **テスト**：入力チェックのルールとエラー文言、Supabase（`api/`）の呼び出しの値・順番、画面遷移と認証状態によるリダイレクト、DB の業務ルール（pgTAP）。
+- **手動**：メール送信など外部サービスとのやり取り、ディープリンク・プッシュ通知など端末固有の挙動（実機）、見た目・レイアウト（Web は Playwright、または実機）。
+
+#### モック
+- **1つ下の層をモックする**：画面のテストでは `api/`・`lib/` の関数やフックを、`api/`・`lib/` のテストでは Supabase クライアント（`@/lib/supabase`、同じフォルダからなら `./supabase`）を `jest.mock` でモックする。
+- 画面のテストでは `expo-router`（`useRouter`）と `useErrorToast` もモックし、「どこへ移動しようとしたか」「どのメッセージを出そうとしたか」を確かめる。
+- `Platform.OS` は `jest.replaceProperty` で差し替える。
+
+#### 書き方
+- テスト名は日本語で「〇〇なら△△する」の形にし、何を保証しているかが分かるように書く。
+- 不具合を直すときは、先にその不具合で失敗するテストを書き、失敗を確認してから修正する。
+- RNTL v14 では `render` / `renderHook` / `fireEvent` が非同期なので、必ず `await` を付ける。
+- `renderRouter` の `getPathname()` は戻り値の Promise に付いている（`const r = renderRouter(...); await r; r.getPathname()`）。`toHavePathname` は型定義が無く tsc で落ちるので使わない。
+- `jest.mock` の factory 内で参照する変数は、名前を `mock` で始める（jest の制約）。
+
+#### DB（pgTAP）
+- マイグレーションごとに対応する pgTAP テスト `supabase/tests/database/<table>.test.sql` を用意する（`begin; … rollback;` で囲み、`auth.users` にテストデータを入れ、ロールを切り替えて RLS を検証する）。リモートで実行するときは `--linked` ではなく `--db-url` で `postgres` ロールとして接続する（「コマンド」節参照）。`--linked` は CLI の一時ロール `cli_login_postgres` で接続し、このロールには pgTAP が入る `extensions` スキーマの使用権限が無く、`reset role` でもこのロールに戻るため、テストが動かない。
 
 
 ## 作業の進め方
@@ -201,9 +227,10 @@ supabase/
 - 機能を1つ追加するときは、テストを先に書いてから実装する（テストを書く → 失敗を確認 → 実装 → 通ることを確認）。
 - テストは全部書くのではなく、優先度の高いものに絞る。
   - **バックエンドを優先**：RLS ポリシー・トリガー・制約などの業務ルールは、pgTAP テストを必ず先に書く。
-  - **フロントエンドは安全性に関わるものだけ**：認証・アクセス制御（リダイレクト）、zod スキーマのバリデーション、データの不整合やセキュリティにつながるロジックなど。
-  - 見た目・レイアウトだけを確かめる UI テストは、原則として書かない。
+  - **フロントエンドは安全性に関わるものだけ**：認証・アクセス制御（リダイレクト）、zod スキーマのバリデーション、データの不整合やセキュリティにつながるロジックなど。現段階は実装を優先するため、これ以外のフロントエンドのテストは原則書かない。
+  - 見た目・レイアウトや、状態ごとの画面表示（読み込み中・成功・失敗など）だけを確かめる UI テストは、原則として書かない。
 - 方針を提案するときに、書く予定のテストの一覧を示す。フロントエンドで書かないものがあれば、その理由も添える。
+- テストと、それが対象とする実装は同じコミットに含める（コミットメッセージの提案もそれに合わせて1つにまとめる）。
 
 ### 実装中
 - 作業中に想定外の問題が見つかり計画を変える必要が出た場合は、作業を止めて相談すること。
