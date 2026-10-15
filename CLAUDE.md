@@ -54,6 +54,8 @@ npx supabase migration new <name>
 npx supabase gen types typescript --local > src/types/database.types.ts
 npx supabase db push           # 未適用のマイグレーションをリモートへ適用
 npx supabase db reset --linked # リモートを全消去して全マイグレーションを再適用（開発段階のみ）
+# リモートで pgTAP テスト（--linked は不可。パスワードはダッシュボードの Database 設定を参照）
+npx supabase test db --db-url "postgresql://postgres.kwjgxjtsyjzajdcaqnpd:<DBパスワード>@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres"
 ```
 
 `.npmrc` で `legacy-peer-deps=true` を設定しており、インストールはこれが前提（NativeWind v5 preview / gluestack v5 alpha の peer 範囲のため）。
@@ -116,7 +118,7 @@ npx supabase db reset --linked # リモートを全消去して全マイグレ�
 - **共通モジュール**：テスト用の共通処理（独自の render、モックの準備など）は `src/test-utils/` に置く。`__tests__/` 内のファイルは名前に関係なく jest がテストとして実行するため、そこには置かない。
 - **全体設定・手動モック**：全テスト共通の設定はルートの `jest.setup.ts`（`setupFilesAfterEnv` に登録）、モジュール丸ごとの手動モックは jest の規約どおり `__mocks__/` に置く。
 - **モックの書き方**：`./supabase` などの lib モジュールは `jest.mock` でモックし、`Platform.OS` は `jest.replaceProperty` で差し替える。
-- **DB（pgTAP）**：マイグレーションごとに対応する pgTAP テスト `supabase/tests/database/<table>.test.sql` を用意する（`begin; … rollback;` で囲み、`auth.users` にテストデータを入れ、ロールを切り替えて RLS を検証する）。
+- **DB（pgTAP）**：マイグレーションごとに対応する pgTAP テスト `supabase/tests/database/<table>.test.sql` を用意する（`begin; … rollback;` で囲み、`auth.users` にテストデータを入れ、ロールを切り替えて RLS を検証する）。リモートで実行するときは `--linked` ではなく `--db-url` で `postgres` ロールとして接続する（「コマンド」節参照）。`--linked` は CLI の一時ロール `cli_login_postgres` で接続し、このロールには pgTAP が入る `extensions` スキーマの使用権限が無く、`reset role` でもこのロールに戻るため、テストが動かない。
 
 
 ## 作業の進め方
