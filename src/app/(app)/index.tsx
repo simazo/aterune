@@ -1,8 +1,8 @@
+import { signOut } from '@/api/auth';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAuth } from '@/hooks/use-auth';
-import { signOut } from '@/lib/auth';
 import { useState } from 'react';
 
 // TODO: 仮実装。ログイン中であることの確認用の簡易画面。

@@ -1,3 +1,5 @@
+import { signInWithEmail } from '@/api/auth';
+import { savePushTokenForCurrentUser } from '@/api/push-tokens';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
 import { FormControl, FormControlError, FormControlErrorText } from '@/components/ui/form-control';
 import { Heading } from '@/components/ui/heading';
@@ -5,8 +7,6 @@ import { Input, InputField } from '@/components/ui/input';
 import { Link, LinkText } from '@/components/ui/link';
 import { VStack } from '@/components/ui/vstack';
 import { useErrorToast } from '@/hooks/use-error-toast';
-import { savePushTokenForCurrentUser } from '@/lib/push-token';
-import { supabase } from '@/lib/supabase';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -29,10 +29,7 @@ export function Login() {
   async function onSubmit({ email, password }: LoginFormValues) {
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { error } = await signInWithEmail(email, password);
 
     if (error) {
       showError(error.message);

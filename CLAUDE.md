@@ -43,7 +43,7 @@ npm start                      # expo start（expo-dev-client を使用）
 npm run android | ios | web
 npm run lint                   # expo lint
 npm test                       # jest（preset: jest-expo）
-npx jest src/lib/auth.test.ts  # 1ファイルだけ実行
+npx jest src/api/auth.test.ts  # 1ファイルだけ実行
 npx jest -t "createSessionFromUrl"  # テスト名で絞り込み
 npm run test:watch             # 変更を監視して再実行
 
@@ -78,7 +78,7 @@ src/
 ├── components/     # 2画面以上で使う共通コンポーネント
 │   └── ui/         # gluestack-ui からコピーしたコンポーネント
 ├── api/            # Supabase への問い合わせ。テーブル・機能単位でまとめる（未作成）
-├── lib/            # 外部 SDK の初期化・設定（supabase.ts など）
+├── lib/            # 外部 SDK の初期化・設定と端末側の処理（supabase.ts、push-notifications.ts など）
 ├── utils/          # 外部に依存しない純粋な関数（未作成）
 ├── hooks/          # 再利用するカスタムフック（use-*.ts）
 ├── providers/      # Context Provider
@@ -92,15 +92,15 @@ supabase/
 ```
 
 - **ルートファイルを薄くする理由**：UI とロジックを `screens/` に置くと、同じ画面を複数のルートから使え、ルートに依存せずテストできる。
-- **データの取得・更新は `api/` に置く**：画面やフックは `supabase` を直接呼ばず、`api/` の関数を呼ぶ。画面のテストでは `api/` をモックすればよい。`lib/` は SDK の初期化・設定だけにする。
-  - 現状は移行前で、`lib/auth.ts`・`lib/push-token.ts` に Supabase への問い合わせがあり、ログイン画面は `supabase` を直接呼んでいる。新しく書くコードは `api/` に置き、既存分の移行は別作業で行う。
+- **データの取得・更新は `api/` に置く**：画面やフックは `supabase` を直接呼ばず、`api/` の関数を呼ぶ。画面のテストでは `api/` をモックすればよい。`lib/` は SDK の初期化・設定と、DB を使わない端末側の処理（通知の許可・token の取得など）だけにする。
+  - 例外：`AuthProvider` は SDK のログイン状態の購読（`getSession()`・`onAuthStateChange()`）のため `@/lib/supabase` を直接使う。
 - **Service Role Key はアプリのコードに置かない**：RLS を越える処理（退会時のユーザー削除、外部 API への送信、Webhook など）は、DB 内で完結するものは `security definer` の関数・トリガー、外部とのやり取りを伴うものは Supabase Edge Functions（`supabase/functions/`）に書く。Expo の API ルート（`app/api/`）や `server/` フォルダは使わない（Web は `static` 出力で、別にサーバーを運用しないため）。
 
 ### アプリ層（`src/`）
 - **ルーティング**（`src/app/`、expo-router）：ルートファイルは `src/screens/<name>/` のコンポーネントを描画するだけの薄いラッパー。UI・フォーム処理は screens 側が持ち、zod の `schema.ts`（と `schema.test.ts`）を同じフォルダに置く。
 - **認証によるアクセス制御**：`AuthProvider`（`src/providers/auth-provider.tsx`）が Supabase のセッションを保持し、`useAuth()`（`src/hooks/use-auth.ts`）で読む。ルートレイアウトは `loading` の完了を待ってから描画し、`(auth)` グループのレイアウトはログイン済みユーザーを `/(app)` へ、`(app)` グループのレイアウトは未ログインユーザーを `/(auth)/login` へリダイレクトする。`src/app/auth/`（例：`/auth/confirmed`）はどちらのグループにも属さないため、認証状態に関係なく表示される。
-- **メール確認フロー**：Supabase クライアントは `detectSessionInUrl: false` なので、`src/lib/auth.ts` の `createSessionFromUrl` が URL のフラグメント／クエリからトークンを自前で読み取り、`setSession` を呼ぶ。戻り先はモバイルが `aterune://auth/confirmed`、Web が `${window.location.origin}/auth/confirmed`（各オリジンを Supabase の Redirect URLs 許可リストに登録する必要がある）。
-- **Push token**（`src/lib/push-token.ts`）：ログイン後／メール確認からの自動ログイン後に `push_tokens` へ保存する。RLS 上ログイン中しか削除できないため、`signOut()` では `supabase.auth.signOut()` を呼ぶ*前に*削除する。Web とシミュレータでは早期リターンする。
+- **メール確認フロー**：Supabase クライアントは `detectSessionInUrl: false` なので、`src/api/auth.ts` の `createSessionFromUrl` が URL のフラグメント／クエリからトークンを自前で読み取り、`setSession` を呼ぶ。戻り先はモバイルが `aterune://auth/confirmed`、Web が `${window.location.origin}/auth/confirmed`（各オリジンを Supabase の Redirect URLs 許可リストに登録する必要がある）。
+- **Push token**（端末からの取得は `src/lib/push-notifications.ts`、DB への保存・削除は `src/api/push-tokens.ts`）：ログイン後／メール確認からの自動ログイン後に `push_tokens` へ保存する。RLS 上ログイン中しか削除できないため、`signOut()` では `supabase.auth.signOut()` を呼ぶ*前に*削除する。Web とシミュレータでは早期リターンする。
 - **Supabase クライアント**（`src/lib/supabase.ts`）：`window` が無い環境（静的 Web の事前レンダリング）ではストレージとトークン自動更新を無効にしている。
 - **UI**：「UI（gluestack-ui / NativeWind）」節を参照。フォームは react-hook-form + `zodResolver`、エラーは `useErrorToast` で表示する。
 - **型**：`src/types/database.types.ts` は自動生成なので手で編集しない。`src/types/index.ts` で `Tables<'...'>` を使った行の型エイリアス（`Profile`、`Session` など）を公開している。
@@ -191,7 +191,7 @@ supabase/
 - `package.json` の `jest.transformIgnorePatterns` は未設定。gluestack-ui を使う画面をテストすると `@gluestack-ui/core` の ESM が変換されず SyntaxError になるため、その前に jest-expo の初期値の許可リストへ `@gluestack-ui` を加える必要がある。ESM で配布されるライブラリで「Unexpected token 'export'」が出たら同様に追加する。
 
 #### 配置
-- **基本**：テストは対象と同じフォルダに `<対象>.test.ts(x)` で置く（例：`src/lib/auth.test.ts`、`src/screens/<name>/schema.test.ts`、1画面のテストなら `src/screens/<name>/index.test.tsx`）。
+- **基本**：テストは対象と同じフォルダに `<対象>.test.ts(x)` で置く（例：`src/api/auth.test.ts`、`src/screens/<name>/schema.test.ts`、1画面のテストなら `src/screens/<name>/index.test.tsx`）。
 - **例外（`src/app/`）**：`src/app/` 配下はすべてルートとして扱われるため、ルート・レイアウトなど複数画面にまたがるテストは `src/__tests__/` に置く（例：`src/__tests__/layouts.test.tsx`）。
 - **共通モジュール**：テスト用の共通処理（独自の render、モックの準備など）は `src/test-utils/` に置く。`__tests__/` 内のファイルは名前に関係なく jest がテストとして実行するため、そこには置かない。
 - **全体設定・手動モック**：全テスト共通の設定はルートの `jest.setup.ts`（未作成。作るときは `setupFilesAfterEnv` に登録）、モジュール丸ごとの手動モックは jest の規約どおり `__mocks__/` に置く。

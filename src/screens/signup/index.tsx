@@ -1,3 +1,4 @@
+import { signUpWithEmail } from '@/api/auth';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
 import { FormControl, FormControlError, FormControlErrorText } from '@/components/ui/form-control';
 import { Heading } from '@/components/ui/heading';
@@ -6,7 +7,6 @@ import { Link, LinkText } from '@/components/ui/link';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useErrorToast } from '@/hooks/use-error-toast';
-import { signUpWithEmail } from '@/lib/auth';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';

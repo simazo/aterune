@@ -1,10 +1,10 @@
+import { createSessionFromUrl, type EmailConfirmationResult } from '@/api/auth';
+import { savePushTokenForCurrentUser } from '@/api/push-tokens';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Heading } from '@/components/ui/heading';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
-import { createSessionFromUrl, type EmailConfirmationResult } from '@/lib/auth';
-import { savePushTokenForCurrentUser } from '@/lib/push-token';
 import { useLinkingURL } from 'expo-linking';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';

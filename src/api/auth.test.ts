@@ -1,19 +1,20 @@
+import { supabase } from '@/lib/supabase';
 import { Platform } from 'react-native';
-import { createSessionFromUrl, signOut, signUpWithEmail } from './auth';
-import { deletePushTokenForCurrentDevice } from './push-token';
-import { supabase } from './supabase';
+import { createSessionFromUrl, signInWithEmail, signOut, signUpWithEmail } from './auth';
+import { deletePushTokenForCurrentDevice } from './push-tokens';
 
-jest.mock('./supabase', () => ({
+jest.mock('@/lib/supabase', () => ({
   supabase: {
     auth: {
       signUp: jest.fn(),
+      signInWithPassword: jest.fn(),
       setSession: jest.fn(),
       signOut: jest.fn(),
     },
   },
 }));
 
-jest.mock('./push-token', () => ({
+jest.mock('./push-tokens', () => ({
   deletePushTokenForCurrentDevice: jest.fn(),
 }));
 
@@ -65,6 +66,21 @@ describe('signUpWithEmail', () => {
         }),
       })
     );
+  });
+});
+
+describe('signInWithEmail', () => {
+  it('入力したメールアドレスとパスワードでsignInWithPasswordを呼び、結果を返す', async () => {
+    const response = { data: { user: null, session: null }, error: null };
+    mockAuth.signInWithPassword.mockResolvedValue(response as never);
+
+    const result = await signInWithEmail('user@example.com', 'secret');
+
+    expect(mockAuth.signInWithPassword).toHaveBeenCalledWith({
+      email: 'user@example.com',
+      password: 'secret',
+    });
+    expect(result).toBe(response);
   });
 });
 

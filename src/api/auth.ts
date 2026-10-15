@@ -1,6 +1,6 @@
+import { supabase } from '@/lib/supabase';
 import { Platform } from 'react-native';
-import { deletePushTokenForCurrentDevice } from './push-token';
-import { supabase } from './supabase';
+import { deletePushTokenForCurrentDevice } from './push-tokens';
 
 const MOBILE_AUTH_REDIRECT_URL = 'aterune://auth/confirmed';
 
@@ -24,6 +24,10 @@ export async function signUpWithEmail(email: string, password: string, displayNa
   });
 
   return { data, error };
+}
+
+export async function signInWithEmail(email: string, password: string) {
+  return supabase.auth.signInWithPassword({ email, password });
 }
 
 export type EmailConfirmationResult =

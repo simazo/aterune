@@ -2,7 +2,6 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { supabase } from './supabase';
 
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
   // Web版は未対応（app.jsonにVAPID公開鍵の設定が必要なため）
@@ -51,43 +50,4 @@ export function getCurrentPlatform(): 'ios' | 'android' | 'web' {
   if (Platform.OS === 'ios') return 'ios';
   if (Platform.OS === 'android') return 'android';
   return 'web';
-}
-
-// ログイン中のユーザーにpush tokenを紐付けて保存する（ログイン直後・メール確認からの自動ログイン直後に呼ぶ）
-export async function savePushTokenForCurrentUser() {
-  const token = await registerForPushNotificationsAsync();
-  if (!token) return;
-
-  const { data: userData } = await supabase.auth.getUser();
-  const userId = userData.user?.id;
-  if (!userId) return;
-
-  const { error } = await supabase.from('push_tokens').upsert(
-    {
-      user_id: userId,
-      expo_push_token: token,
-      platform: getCurrentPlatform(),
-    },
-    { onConflict: 'user_id,expo_push_token', ignoreDuplicates: true }
-  );
-
-  if (error) {
-    console.log('push_tokens登録エラー:', error.message);
-  } else {
-    console.log('push_tokens登録成功:', token);
-  }
-}
-
-// この端末のpush tokenを削除する（RLS上、ログイン中にしか削除できないためログアウト前に呼ぶ）
-export async function deletePushTokenForCurrentDevice() {
-  const token = await registerForPushNotificationsAsync();
-  if (!token) return;
-
-  const { error } = await supabase.from('push_tokens').delete().eq('expo_push_token', token);
-
-  if (error) {
-    console.log('push_tokens削除エラー:', error.message);
-  } else {
-    console.log('push_tokens削除成功:', token);
-  }
 }
