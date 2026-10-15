@@ -1,21 +1,11 @@
 import { logger } from '@/lib/logger';
+import { getCurrentPlatform, registerForPushNotificationsAsync } from '@/lib/push-notifications';
 import { supabase } from '@/lib/supabase';
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
 import { deletePushTokenForCurrentDevice, savePushTokenForCurrentUser } from './push-tokens';
 
-jest.mock('expo-notifications', () => ({
-  AndroidImportance: { DEFAULT: 3 },
-  setNotificationChannelAsync: jest.fn(),
-  getPermissionsAsync: jest.fn(),
-  requestPermissionsAsync: jest.fn(),
-  getExpoPushTokenAsync: jest.fn(),
-}));
-
-jest.mock('expo-device', () => ({ __esModule: true, isDevice: true }));
-
-jest.mock('expo-constants', () => ({
-  expoConfig: { extra: { eas: { projectId: 'test-project-id' } } },
+jest.mock('@/lib/push-notifications', () => ({
+  registerForPushNotificationsAsync: jest.fn(),
+  getCurrentPlatform: jest.fn(),
 }));
 
 jest.mock('@/lib/supabase', () => ({
@@ -30,19 +20,15 @@ jest.mock('@/lib/logger', () => ({
 }));
 
 const TOKEN = 'ExponentPushToken[test]';
-const mockNotifications = jest.mocked(Notifications);
+const mockRegisterForPushNotificationsAsync = jest.mocked(registerForPushNotificationsAsync);
+const mockGetCurrentPlatform = jest.mocked(getCurrentPlatform);
 const mockSupabase = jest.mocked(supabase);
 const mockLogger = jest.mocked(logger);
 
-afterEach(() => {
-  // replacePropertyで差し替えたPlatform.OSを元に戻す
-  jest.restoreAllMocks();
-});
-
 beforeEach(() => {
   jest.clearAllMocks();
-  mockNotifications.getPermissionsAsync.mockResolvedValue({ status: 'granted' } as never);
-  mockNotifications.getExpoPushTokenAsync.mockResolvedValue({ data: TOKEN } as never);
+  mockRegisterForPushNotificationsAsync.mockResolvedValue(TOKEN);
+  mockGetCurrentPlatform.mockReturnValue('ios');
 });
 
 describe('savePushTokenForCurrentUser', () => {
@@ -55,14 +41,13 @@ describe('savePushTokenForCurrentUser', () => {
 
     expect(mockSupabase.from).toHaveBeenCalledWith('push_tokens');
     expect(upsert).toHaveBeenCalledWith(
-      { user_id: 'user-1', expo_push_token: TOKEN, platform: Platform.OS },
+      { user_id: 'user-1', expo_push_token: TOKEN, platform: 'ios' },
       { onConflict: 'user_id,expo_push_token', ignoreDuplicates: true }
     );
   });
 
   it('tokenが取れなければ保存しない', async () => {
-    mockNotifications.getPermissionsAsync.mockResolvedValue({ status: 'denied' } as never);
-    mockNotifications.requestPermissionsAsync.mockResolvedValue({ status: 'denied' } as never);
+    mockRegisterForPushNotificationsAsync.mockResolvedValue(null);
 
     await savePushTokenForCurrentUser();
 
@@ -111,7 +96,7 @@ describe('deletePushTokenForCurrentDevice', () => {
   });
 
   it('tokenが取れなければ何もしない', async () => {
-    jest.replaceProperty(Platform, 'OS', 'web');
+    mockRegisterForPushNotificationsAsync.mockResolvedValue(null);
 
     await deletePushTokenForCurrentDevice();
 
