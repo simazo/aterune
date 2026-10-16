@@ -49,8 +49,10 @@ select is(
 -- ---------- 7-8. anon(未ログイン) ----------
 set local role anon;
 
+-- seed などテスト外の行に左右されないよう、テストで入れた行だけを数える
 select is(
-  (select count(*)::int from public.teller_profiles),
+  (select count(*)::int from public.teller_profiles
+    where profile_id = '00000000-0000-0000-0000-0000000000c1'),
   1,
   'anon は占い師プロフィールを読める'
 );

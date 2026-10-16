@@ -29,9 +29,11 @@ select ok(
 -- ===== anon =====
 set local role anon;
 
--- 2. anon は select できる
+-- 2. anon は select できる(seed などテスト外の行に左右されないよう、テストの占い師の行だけを数える)
 select is(
-  (select count(*)::int from public.teller_tags),
+  (select count(*)::int from public.teller_tags
+    where teller_id in ('00000000-0000-0000-0000-0000000000b1',
+                        '00000000-0000-0000-0000-0000000000b2')),
   1,
   'anon は teller_tags を select できる'
 );
@@ -52,7 +54,8 @@ select set_config('request.jwt.claims',
 
 -- 4. alice は他人の行も select できる
 select is(
-  (select count(*)::int from public.teller_tags),
+  (select count(*)::int from public.teller_tags
+    where teller_id = '00000000-0000-0000-0000-0000000000b2'),
   1,
   'authenticated は他人の teller_tags も select できる'
 );

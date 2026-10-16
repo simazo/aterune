@@ -38,8 +38,11 @@ select throws_ok(
 -- ---------- 5-6. anon(未ログイン) ----------
 set local role anon;
 
+-- seed などテスト外の行に左右されないよう、テストで入れた行だけを数える
 select is(
-  (select count(*)::int from public.profiles),
+  (select count(*)::int from public.profiles
+    where id in ('00000000-0000-0000-0000-0000000000a1',
+                 '00000000-0000-0000-0000-0000000000a2')),
   2,
   'anon は全プロフィールを読める'
 );
