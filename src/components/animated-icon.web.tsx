@@ -3,6 +3,9 @@ import { StyleSheet, View } from 'react-native';
 import Animated, { Keyframe, Easing } from 'react-native-reanimated';
 
 import classes from './animated-icon.module.css';
+
+// TODO: 仮実装。Expo テンプレートのままで、StyleSheet と React Native のコア部品を使っている。
+// 本実装では gluestack-ui / NativeWind で書き直す（#3）。
 const DURATION = 300;
 
 export function AnimatedSplashOverlay() {
