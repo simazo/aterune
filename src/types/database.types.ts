@@ -389,6 +389,8 @@ export type Database = {
           requires_birthdate: boolean
           review_count: number
           self_pr: string | null
+          session_count: number
+          training_period: string | null
           updated_at: string
         }
         Insert: {
@@ -399,6 +401,8 @@ export type Database = {
           requires_birthdate?: boolean
           review_count?: number
           self_pr?: string | null
+          session_count?: number
+          training_period?: string | null
           updated_at?: string
         }
         Update: {
@@ -409,6 +413,8 @@ export type Database = {
           requires_birthdate?: boolean
           review_count?: number
           self_pr?: string | null
+          session_count?: number
+          training_period?: string | null
           updated_at?: string
         }
         Relationships: [

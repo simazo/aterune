@@ -10,10 +10,19 @@ create table public.teller_profiles (
   self_pr            text,
   is_accepting       boolean not null default true,
   requires_birthdate boolean not null default false,
+  training_period    text,
   average_rating     numeric(3, 2),
   review_count       integer not null default 0,
+  session_count      integer not null default 0,
   created_at         timestamptz not null default now(),
-  updated_at         timestamptz not null default now()
+  updated_at         timestamptz not null default now(),
+
+  -- 修行期間は任意入力。入れるなら空白(半角・全角)だけは不可、20 文字まで
+  constraint teller_profiles_training_period_check
+    check (
+      training_period is null
+      or (btrim(training_period, ' 　') <> '' and char_length(training_period) <= 20)
+    )
 );
 
 comment on table  public.teller_profiles is '占い師専用のプロフィール(占い師のみ行が存在)';
@@ -21,8 +30,10 @@ comment on column public.teller_profiles.profile_id is '対象ユーザーID(pro
 comment on column public.teller_profiles.self_pr is '占い師専用の自己PR文(経歴・得意な占術・鑑定スタイル等の長文を想定。profiles.bioとは別カラム)';
 comment on column public.teller_profiles.is_accepting is '受付ステータス(true=新規セッション受付中)';
 comment on column public.teller_profiles.requires_birthdate is 'セッション申込み時に相談者の生年月日入力を必須にするか';
+comment on column public.teller_profiles.training_period is '修行期間(本人の自由記述。例: 半年、3年。任意入力、20文字まで)';
 comment on column public.teller_profiles.average_rating is '平均評価(reviews投稿時にトリガーで自動更新されるキャッシュ値。手動更新しない)';
 comment on column public.teller_profiles.review_count is '評価件数(reviews投稿時にトリガーで自動更新されるキャッシュ値。手動更新しない)';
+comment on column public.teller_profiles.session_count is '完了したセッション数(completed / auto_completed。sessions の status 変化時にトリガーで自動更新されるキャッシュ値。手動更新しない)';
 
 -- 2. updated_at の自動更新 ----------------------------------
 create trigger teller_profiles_set_updated_at
@@ -85,10 +96,10 @@ revoke all on public.teller_profiles from anon, authenticated;
 grant select on public.teller_profiles to anon;
 grant select on public.teller_profiles to authenticated;
 
--- average_rating / review_count は自分で書き換えさせない(列を限定)
-grant insert (profile_id, self_pr, is_accepting, requires_birthdate)
+-- average_rating / review_count / session_count は自分で書き換えさせない(列を限定)
+grant insert (profile_id, self_pr, is_accepting, requires_birthdate, training_period)
   on public.teller_profiles to authenticated;
-grant update (self_pr, is_accepting, requires_birthdate)
+grant update (self_pr, is_accepting, requires_birthdate, training_period)
   on public.teller_profiles to authenticated;
 
 grant all on public.teller_profiles to service_role;

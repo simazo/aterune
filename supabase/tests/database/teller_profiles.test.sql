@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(25);
 
 -- ---------- 準備 ----------
 -- profiles は handle_new_user のトリガーで自動作成される
@@ -67,7 +67,7 @@ select throws_ok(
 
 reset role;
 
--- ---------- 9-16. authenticated(bob = c2 としてログイン) ----------
+-- ---------- 9-21. authenticated(bob = c2 としてログイン) ----------
 set local role authenticated;
 set local request.jwt.claims =
   '{"sub":"00000000-0000-0000-0000-0000000000c2","role":"authenticated"}';
@@ -125,6 +125,42 @@ select throws_ok(
 );
 
 select throws_ok(
+  $$ update public.teller_profiles set session_count = 999
+       where profile_id = '00000000-0000-0000-0000-0000000000c2' $$,
+  '42501',
+  null,
+  '自分で session_count は書き換えられない'
+);
+
+select lives_ok(
+  $$ update public.teller_profiles set training_period = '半年'
+       where profile_id = '00000000-0000-0000-0000-0000000000c2' $$,
+  '自分で training_period(修行期間)を設定できる'
+);
+
+select lives_ok(
+  $$ update public.teller_profiles set training_period = null
+       where profile_id = '00000000-0000-0000-0000-0000000000c2' $$,
+  'training_period は未入力(NULL)に戻せる'
+);
+
+select throws_ok(
+  $$ update public.teller_profiles set training_period = ' 　'
+       where profile_id = '00000000-0000-0000-0000-0000000000c2' $$,
+  '23514',
+  null,
+  'training_period は空白だけにできない(半角・全角とも)'
+);
+
+select throws_ok(
+  $$ update public.teller_profiles set training_period = repeat('あ', 21)
+       where profile_id = '00000000-0000-0000-0000-0000000000c2' $$,
+  '23514',
+  null,
+  'training_period は 21 文字以上にできない'
+);
+
+select throws_ok(
   $$ delete from public.teller_profiles
        where profile_id = '00000000-0000-0000-0000-0000000000c2' $$,
   '42501',
@@ -134,7 +170,7 @@ select throws_ok(
 
 reset role;
 
--- ---------- 17-19. 削除すると is_teller と active_mode が戻る ----------
+-- ---------- 22-24. 削除すると is_teller と active_mode が戻る ----------
 -- alice を teller モードにしてから、占い師登録を削除する
 update public.profiles set active_mode = 'teller'
   where id = '00000000-0000-0000-0000-0000000000c1';
@@ -159,7 +195,7 @@ select is(
   '削除されると active_mode が consultant に戻る'
 );
 
--- ---------- 20. ユーザー削除の連鎖 ----------
+-- ---------- 25. ユーザー削除の連鎖 ----------
 select lives_ok(
   $$ delete from auth.users
        where id = '00000000-0000-0000-0000-0000000000c2' $$,
