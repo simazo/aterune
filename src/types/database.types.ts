@@ -358,16 +358,25 @@ export type Database = {
       }
       tags: {
         Row: {
+          category: string
           id: string
           name: string
+          slug: string
+          sort_order: number
         }
         Insert: {
+          category: string
           id?: string
           name: string
+          slug: string
+          sort_order?: number
         }
         Update: {
+          category?: string
           id?: string
           name?: string
+          slug?: string
+          sort_order?: number
         }
         Relationships: []
       }

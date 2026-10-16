@@ -11,12 +11,12 @@ insert into public.teller_profiles (profile_id) values
   ('00000000-0000-0000-0000-0000000000b1'),
   ('00000000-0000-0000-0000-0000000000b2');
 
-insert into public.tags (id, name) values
-  ('00000000-0000-0000-0000-0000000000a1', 'タロット'),
-  ('00000000-0000-0000-0000-0000000000a2', '四柱推命'),
-  ('00000000-0000-0000-0000-0000000000a3', '手相');
+insert into public.tags (id, category, slug, name) values
+  ('00000000-0000-0000-0000-0000000000a1', 'divination', 'test-divination-1', 'テスト占術1'),
+  ('00000000-0000-0000-0000-0000000000a2', 'divination', 'test-divination-2', 'テスト占術2'),
+  ('00000000-0000-0000-0000-0000000000a3', 'divination', 'test-divination-3', 'テスト占術3');
 
--- bob は「タロット」を持っている
+-- bob は「テスト占術1」を持っている
 insert into public.teller_tags (teller_id, tag_id) values
   ('00000000-0000-0000-0000-0000000000b2', '00000000-0000-0000-0000-0000000000a1');
 
