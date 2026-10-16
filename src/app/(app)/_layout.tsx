@@ -1,5 +1,5 @@
 import { useAuth } from '@/hooks/use-auth';
-import { Redirect, Slot } from 'expo-router';
+import { Redirect, Stack } from 'expo-router';
 
 export default function AppLayout() {
   const { session } = useAuth();
@@ -8,5 +8,7 @@ export default function AppLayout() {
     return <Redirect href="/(auth)/login" />;
   }
 
-  return <Slot />;
+  // タブ（(tabs)）の上に、占い師詳細などの画面を重ねて表示するため Stack にする。
+  // ヘッダーは各画面で必要になった時点で出す
+  return <Stack screenOptions={{ headerShown: false }} />;
 }
