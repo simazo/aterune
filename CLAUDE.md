@@ -126,7 +126,7 @@ supabase/
   // TODO: 仮実装。バックエンド動作確認のため最低限の表示のみ。
   // 本実装時はデザイン方針確定後に gluestack-ui コンポーネントで作り直す
   ```
-- 既存の例外：`src/components/animated-icon.tsx`（`.web.tsx`・`.module.css`）は Expo テンプレートのままの仮実装で、`StyleSheet` とコア部品を使っている。書き直しは issue #3 で管理する。
+- 既存の例外：`src/components/animated-icon.tsx`（`.web.tsx`・`.module.css`）は Expo テンプレートのままの仮実装で、`StyleSheet` とコア部品を使っている。書き直しは issue #2 で管理する。
 
 ### コンポーネントの切り出し
 責務の単位で切り出す。切り出す動機は次の3つ。

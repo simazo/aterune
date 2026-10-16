@@ -6,7 +6,7 @@ import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 
 // TODO: 仮実装。Expo テンプレートのままで、StyleSheet と React Native のコア部品を使っている。
-// 本実装では gluestack-ui / NativeWind で書き直す（#3）。
+// 本実装では gluestack-ui / NativeWind で書き直す（#2）。
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
 
