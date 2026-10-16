@@ -98,7 +98,8 @@ supabase/
 
 ### アプリ層（`src/`）
 - **ルーティング**（`src/app/`、expo-router）：ルートファイルは `src/screens/<name>/` のコンポーネントを描画するだけの薄いラッパー。UI・フォーム処理は screens 側が持ち、zod の `schema.ts`（と `schema.test.ts`）を同じフォルダに置く。
-- **認証によるアクセス制御**：`AuthProvider`（`src/providers/auth-provider.tsx`）が Supabase のセッションを保持し、`useAuth()`（`src/hooks/use-auth.ts`）で読む。ルートレイアウトは `loading` の完了を待ってから描画し、`(auth)` グループのレイアウトはログイン済みユーザーを `/(app)` へ、`(app)` グループのレイアウトは未ログインユーザーを `/(auth)/login` へリダイレクトする。`src/app/auth/`（例：`/auth/confirmed`）はどちらのグループにも属さないため、認証状態に関係なく表示される。
+- **認証によるアクセス制御**：`AuthProvider`（`src/providers/auth-provider.tsx`）が Supabase のセッションを保持し、`useAuth()`（`src/hooks/use-auth.ts`）で読む。ルートレイアウトは `loading` の完了を待ってから描画し、`(auth)` グループのレイアウトはログイン済みユーザーを `/`（`(app)/(tabs)` のさがすタブ）へ、`(app)` グループのレイアウトは未ログインユーザーを `/(auth)/login` へリダイレクトする。`src/app/auth/`（例：`/auth/confirmed`）はどちらのグループにも属さないため、認証状態に関係なく表示される。
+- **ログイン後の画面構成**：`(app)/_layout.tsx` は認証ガードと Stack（ヘッダーは非表示。占い師詳細などをタブの上に重ねる）。`(app)/(tabs)/_layout.tsx` が下部タブ（`expo-router/js-tabs` の `Tabs`）で、相談者モードは さがす（`index`）／メッセージ（`messages`）／マイページ（`mypage`）。占い師モード（掲示板／メッセージ／マイページ）は未実装で、`profiles.active_mode` に応じて `Tabs.Protected` で出し分ける予定。遷移先はグループ名ではなく URL（`/`、`/messages` など）で書く（typed routes ではグループ名を含む `/(app)` などは構成が変わると型エラーになるため）。
 - **メール確認フロー**：Supabase クライアントは `detectSessionInUrl: false` なので、`src/api/auth.ts` の `createSessionFromUrl` が URL のフラグメント／クエリからトークンを自前で読み取り、`setSession` を呼ぶ。戻り先はモバイルが `aterune://auth/confirmed`、Web が `${window.location.origin}/auth/confirmed`（各オリジンを Supabase の Redirect URLs 許可リストに登録する必要がある）。
 - **Push token**（端末からの取得は `src/lib/push-notifications.ts`、DB への保存・削除は `src/api/push-tokens.ts`）：ログイン後／メール確認からの自動ログイン後に `push_tokens` へ保存する。RLS 上ログイン中しか削除できないため、`signOut()` では `supabase.auth.signOut()` を呼ぶ*前に*削除する。Web とシミュレータでは早期リターンする。
 - **Supabase クライアント**（`src/lib/supabase.ts`）：`window` が無い環境（静的 Web の事前レンダリング）ではストレージとトークン自動更新を無効にしている。
