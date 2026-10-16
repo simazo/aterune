@@ -61,7 +61,7 @@ export function AuthConfirmed() {
         <Text size="md" className="text-center">
           ようこそ、アテルネへ。
         </Text>
-        <Button onPress={() => router.replace('/(app)')} className="mt-2">
+        <Button onPress={() => router.replace('/')} className="mt-2">
           <ButtonText>はじめる</ButtonText>
         </Button>
       </VStack>
