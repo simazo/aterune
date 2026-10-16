@@ -5,9 +5,9 @@ import { VStack } from '@/components/ui/vstack';
 import { useAuth } from '@/hooks/use-auth';
 import { useState } from 'react';
 
-// TODO: 仮実装。ログイン中であることの確認用の簡易画面。
-// 本実装ではフロントエンド設計方針に沿って、screens/配下の実際のホーム画面に置き換える。
-export default function AppHomeScreen() {
+// TODO: 仮実装。ログイン中であることの確認とログアウトのみ。
+// 本実装ではプロフィール、掲示板への投稿・オファーの一覧などを表示する
+export function MyPage() {
   const { session } = useAuth();
   const [loading, setLoading] = useState(false);
 

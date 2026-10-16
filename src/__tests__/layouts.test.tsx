@@ -1,4 +1,5 @@
 // src/app 配下には routes / layouts 以外を置けないため、レイアウトのテストはここに置く
+import TabsLayout from '@/app/(app)/(tabs)/_layout';
 import AppLayout from '@/app/(app)/_layout';
 import AuthLayout from '@/app/(auth)/_layout';
 import { useAuth } from '@/hooks/use-auth';
@@ -16,14 +17,18 @@ function setSignedIn(signedIn: boolean) {
   } as never);
 }
 
-// 本物の (app) / (auth) レイアウトに、文言を出すだけの仮の画面を組み合わせる。
+// 本物の (app) / (tabs) / (auth) レイアウトに、文言を出すだけの仮の画面を組み合わせる。
+// 画面の文言は、タブのラベル（さがす・メッセージ・マイページ）と重ならないようにする。
 // getPathname() は renderRouter の戻り値（Promise）に付くため、呼び出し側で戻り値を保持したまま await する。
 // expo-router の toHavePathname は型定義が無いので使わない
 function renderApp(initialUrl: string) {
   return renderRouter(
     {
       '(app)/_layout': AppLayout,
-      '(app)/index': () => <Text>ホーム</Text>,
+      '(app)/(tabs)/_layout': TabsLayout,
+      '(app)/(tabs)/index': () => <Text>占い師検索画面</Text>,
+      '(app)/(tabs)/messages': () => <Text>メッセージ画面</Text>,
+      '(app)/(tabs)/mypage': () => <Text>マイページ画面</Text>,
       '(auth)/_layout': AuthLayout,
       '(auth)/login': () => <Text>ログイン</Text>,
     },
@@ -40,7 +45,18 @@ describe('(app) レイアウト', () => {
 
     expect(router.getPathname()).toBe('/login');
     expect(screen.getByText('ログイン')).toBeOnTheScreen();
-    expect(screen.queryByText('ホーム')).toBeNull();
+    expect(screen.queryByText('占い師検索画面')).toBeNull();
+  });
+
+  it('未ログインでタブの画面を直接開いてもログイン画面へリダイレクトする', async () => {
+    setSignedIn(false);
+
+    const router = renderApp('/messages');
+    await router;
+
+    expect(router.getPathname()).toBe('/login');
+    expect(screen.getByText('ログイン')).toBeOnTheScreen();
+    expect(screen.queryByText('メッセージ画面')).toBeNull();
   });
 
   it('ログイン済みならそのまま画面を表示する', async () => {
@@ -50,19 +66,19 @@ describe('(app) レイアウト', () => {
     await router;
 
     expect(router.getPathname()).toBe('/');
-    expect(screen.getByText('ホーム')).toBeOnTheScreen();
+    expect(screen.getByText('占い師検索画面')).toBeOnTheScreen();
   });
 });
 
 describe('(auth) レイアウト', () => {
-  it('ログイン済みならホームへリダイレクトする', async () => {
+  it('ログイン済みなら占い師検索のタブへリダイレクトする', async () => {
     setSignedIn(true);
 
     const router = renderApp('/login');
     await router;
 
     expect(router.getPathname()).toBe('/');
-    expect(screen.getByText('ホーム')).toBeOnTheScreen();
+    expect(screen.getByText('占い師検索画面')).toBeOnTheScreen();
     expect(screen.queryByText('ログイン')).toBeNull();
   });
 
