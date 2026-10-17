@@ -34,7 +34,8 @@ type Props = {
 // TODO: 仮実装。タップしても何も起きない。占い師詳細画面を作ったら Pressable で包んで遷移させる
 export function TellerCard({ teller }: Props) {
   return (
-    <Card size="sm" className="gap-0 overflow-hidden p-0">
+    // 2列のとき、同じ行のカードの高さを揃えるため flex-1 で枠いっぱいに広げる
+    <Card size="sm" className="flex-1 gap-0 overflow-hidden p-0">
       <VStack className={`h-14 ${getAccentClass(teller.teller_id)}`} />
 
       <VStack className="px-4 pb-4" space="sm">

@@ -106,11 +106,14 @@ export function TellerSearch() {
           条件に合う占い師が見つかりませんでした
         </Text>
       ) : (
-        <VStack space="md">
+        // スマホは1列、幅 768px 以上（md）は2列。カードの間隔は各カードの外側の余白（p-2）で取る
+        <HStack className="-m-2 flex-wrap">
           {tellers.map((teller) => (
-            <TellerCard key={teller.teller_id} teller={teller} />
+            <VStack key={teller.teller_id} className="w-full p-2 md:w-1/2">
+              <TellerCard teller={teller} />
+            </VStack>
           ))}
-        </VStack>
+        </HStack>
       )}
     </ScrollView>
   );
