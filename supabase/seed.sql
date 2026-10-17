@@ -82,15 +82,16 @@ update public.profiles p
   ) as v (id, bio)
  where p.id = v.id;
 
--- 受付中／停止中、評価の有無・高低を散らし、検索の絞り込みと並び順を確認できるようにする。
--- average_rating / review_count は本来 reviews のトリガーが更新するキャッシュ値だが、
+-- 受付中／停止中、評価の有無・高低、修行期間の有無、新人(完了セッション 5 回未満)かどうかを散らし、
+-- 検索の絞り込みと並び順、カードの表示を確認できるようにする。
+-- average_rating / review_count / session_count は本来トリガーが更新するキャッシュ値だが、
 -- seed ではセッション・レビューを作らず、確認用に直接入れる
-insert into public.teller_profiles (profile_id, self_pr, is_accepting, requires_birthdate, average_rating, review_count) values
-  ('5eed0000-0000-4000-8000-000000000001', 'タロット歴3年。恋愛・人間関係の相談が得意です。気持ちに寄り添いながら、じっくりお話を伺います。', true,  false, 4.80, 25),
-  ('5eed0000-0000-4000-8000-000000000002', '西洋占星術と数秘術で、転機の時期や向いている方向を具体的にお伝えします。', true,  true,  4.20, 10),
-  ('5eed0000-0000-4000-8000-000000000003', '四柱推命・算命学を勉強中。生年月日から、性格や運気の流れを丁寧に読み解きます。', false, true,  4.95, 40),
-  ('5eed0000-0000-4000-8000-000000000004', '手相・人相の練習中です。写真を見て、短くズバッとお伝えします。', true,  false, null, 0),
-  ('5eed0000-0000-4000-8000-000000000005', '霊視・チャネリングで、言葉にならない気持ちを受け取ります。住まいの風水のご相談もどうぞ。', true,  false, 3.50, 4);
+insert into public.teller_profiles (profile_id, self_pr, training_period, is_accepting, requires_birthdate, average_rating, review_count, session_count) values
+  ('5eed0000-0000-4000-8000-000000000001', 'タロット歴3年。恋愛・人間関係の相談が得意です。気持ちに寄り添いながら、じっくりお話を伺います。', '3年',   true,  false, 4.80, 25, 31),
+  ('5eed0000-0000-4000-8000-000000000002', '西洋占星術と数秘術で、転機の時期や向いている方向を具体的にお伝えします。',                       '1年半', true,  true,  4.20, 10, 12),
+  ('5eed0000-0000-4000-8000-000000000003', '四柱推命・算命学を勉強中。生年月日から、性格や運気の流れを丁寧に読み解きます。',                 '5年',   false, true,  4.95, 40, 52),
+  ('5eed0000-0000-4000-8000-000000000004', '手相・人相の練習中です。写真を見て、短くズバッとお伝えします。',                                   '半年',  true,  false, null, 0,  1),
+  ('5eed0000-0000-4000-8000-000000000005', '霊視・チャネリングで、言葉にならない気持ちを受け取ります。住まいの風水のご相談もどうぞ。',       null,    true,  false, 3.50, 4,  4);
 
 insert into public.teller_tags (teller_id, tag_id)
 select v.teller_id, t.id
