@@ -13,7 +13,7 @@ export type Tag = Tables<'tags'>;
 export type PushToken = Tables<'push_tokens'>;
 
 // tags.category の CHECK 制約と合わせる
-export type TagCategory = 'divination' | 'style';
+export type TagCategory = 'divination' | 'concern' | 'style';
 
 // search_tellers の並び順（DB の enum teller_sort_order）
 export type TellerSortOrder = Enums<'teller_sort_order'>;

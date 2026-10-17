@@ -15,8 +15,10 @@ import { TellerCard } from './components/teller-card';
 
 type TagOption = Pick<Tag, 'id' | 'category' | 'slug' | 'name'>;
 
+// セクションはこのキーの順に並ぶ（search_tellers が返すカードのタグの並びと合わせる）
 const CATEGORY_LABELS: Record<TagCategory, string> = {
   divination: '占術',
+  concern: '相談内容',
   style: '回答のスタイル',
 };
 
