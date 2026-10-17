@@ -462,7 +462,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      search_tellers: {
+        Args: { p_tag_slugs?: string[] }
+        Returns: {
+          avatar_url: string
+          average_rating: number
+          display_name: string
+          is_accepting: boolean
+          review_count: number
+          self_pr: string
+          session_count: number
+          tags: Json
+          teller_id: string
+          training_period: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
