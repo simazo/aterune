@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(18);
 
 -- ===== テストデータ(postgres 権限)=====
 -- seed に依存しないよう、タグ・占い師はすべてここで作る。結果はテストの占い師(d1〜d4)に絞って確かめる
@@ -50,11 +50,11 @@ grant select on test_tellers to anon, authenticated;
 
 -- 1-2. 実行権限
 select ok(
-  has_function_privilege('anon', 'public.search_tellers(text[])', 'execute'),
+  has_function_privilege('anon', 'public.search_tellers(text[], boolean)', 'execute'),
   'anon は search_tellers を実行できる'
 );
 select ok(
-  has_function_privilege('authenticated', 'public.search_tellers(text[])', 'execute'),
+  has_function_privilege('authenticated', 'public.search_tellers(text[], boolean)', 'execute'),
   'authenticated は search_tellers を実行できる'
 );
 
@@ -162,6 +162,36 @@ select is(
   '受付停止中の占い師も返し、is_accepting は false'
 );
 
+-- 14. 受付中のみ
+select set_eq(
+  $$ select teller_id from public.search_tellers('{}', true) where teller_id in (select id from test_tellers) $$,
+  array[
+    '00000000-0000-0000-0000-0000000000d1',
+    '00000000-0000-0000-0000-0000000000d2',
+    '00000000-0000-0000-0000-0000000000d4'
+  ]::uuid[],
+  'p_accepting_only が true なら、受付停止中の占い師を返さない'
+);
+
+-- 15. 明示的に false なら受付停止中も含む
+select set_eq(
+  $$ select teller_id from public.search_tellers('{}', false) where teller_id in (select id from test_tellers) $$,
+  array[
+    '00000000-0000-0000-0000-0000000000d1',
+    '00000000-0000-0000-0000-0000000000d2',
+    '00000000-0000-0000-0000-0000000000d3',
+    '00000000-0000-0000-0000-0000000000d4'
+  ]::uuid[],
+  'p_accepting_only が false なら、受付停止中の占い師も返す'
+);
+
+-- 16. タグの絞り込みと組み合わせる
+select set_eq(
+  $$ select teller_id from public.search_tellers(array['test-div-1'], true) where teller_id in (select id from test_tellers) $$,
+  array['00000000-0000-0000-0000-0000000000d1']::uuid[],
+  'タグと受付中のみを組み合わせると、両方を満たす占い師だけを返す'
+);
+
 reset role;
 
 -- ===== ログイン中の占い師(d1)=====
@@ -169,7 +199,7 @@ set local role authenticated;
 select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-0000000000d1","role":"authenticated"}', true);
 
--- 14. 自分自身は返さない
+-- 17. 自分自身は返さない
 select set_eq(
   $$ select teller_id from public.search_tellers() where teller_id in (select id from test_tellers) $$,
   array[
@@ -180,7 +210,7 @@ select set_eq(
   'ログイン中の占い師には、自分自身を返さない'
 );
 
--- 15. ログイン中でもタグの絞り込みは効く
+-- 18. ログイン中でもタグの絞り込みは効く
 select set_eq(
   $$ select teller_id from public.search_tellers(array['test-div-1']) where teller_id in (select id from test_tellers) $$,
   array['00000000-0000-0000-0000-0000000000d3']::uuid[],

@@ -25,28 +25,34 @@ beforeEach(() => {
 });
 
 describe('searchTellers', () => {
-  it('選んだタグのslugをp_tag_slugsに渡してsearch_tellersを呼び、結果を返す', async () => {
+  it('選んだタグのslugと受付中のみの指定をsearch_tellersに渡し、結果を返す', async () => {
     mockSupabase.rpc.mockResolvedValue({ data: [TELLER], error: null } as never);
 
-    const result = await searchTellers(['tarot', 'gentle']);
+    const result = await searchTellers({ tagSlugs: ['tarot', 'gentle'], isAcceptingOnly: true });
 
-    expect(mockSupabase.rpc).toHaveBeenCalledWith('search_tellers', { p_tag_slugs: ['tarot', 'gentle'] });
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('search_tellers', {
+      p_tag_slugs: ['tarot', 'gentle'],
+      p_accepting_only: true,
+    });
     expect(result).toEqual({ data: [TELLER], error: null });
   });
 
-  it('タグを選んでいなければ空配列を渡す（全占い師が対象）', async () => {
+  it('タグを選ばず受付中のみもオフなら、空配列とfalseを渡す（全占い師が対象）', async () => {
     mockSupabase.rpc.mockResolvedValue({ data: [], error: null } as never);
 
-    await searchTellers([]);
+    await searchTellers({ tagSlugs: [], isAcceptingOnly: false });
 
-    expect(mockSupabase.rpc).toHaveBeenCalledWith('search_tellers', { p_tag_slugs: [] });
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('search_tellers', {
+      p_tag_slugs: [],
+      p_accepting_only: false,
+    });
   });
 
   it('呼び出しに失敗したらerrorをそのまま返す', async () => {
     const error = { message: 'network error' };
     mockSupabase.rpc.mockResolvedValue({ data: null, error } as never);
 
-    const result = await searchTellers(['tarot']);
+    const result = await searchTellers({ tagSlugs: ['tarot'], isAcceptingOnly: false });
 
     expect(result).toEqual({ data: null, error });
   });

@@ -5,6 +5,7 @@ import { Heading } from '@/components/ui/heading';
 import { HStack } from '@/components/ui/hstack';
 import { ScrollView } from '@/components/ui/scroll-view';
 import { Spinner } from '@/components/ui/spinner';
+import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useErrorToast } from '@/hooks/use-error-toast';
@@ -19,11 +20,12 @@ const CATEGORY_LABELS: Record<TagCategory, string> = {
   style: '回答のスタイル',
 };
 
-// TODO: 仮実装。受付中のみの絞り込み・並び順・件数が多いときのページ送りは未対応
+// TODO: 仮実装。並び順・件数が多いときのページ送りは未対応
 export function TellerSearch() {
   const showError = useErrorToast();
   const [tags, setTags] = useState<TagOption[]>([]);
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>([]);
+  const [isAcceptingOnly, setIsAcceptingOnly] = useState(false);
   const [tellers, setTellers] = useState<TellerSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -46,7 +48,7 @@ export function TellerSearch() {
 
     (async () => {
       setIsLoading(true);
-      const { data, error } = await searchTellers(selectedSlugs);
+      const { data, error } = await searchTellers({ tagSlugs: selectedSlugs, isAcceptingOnly });
       if (isCancelled) return;
 
       if (error) {
@@ -61,7 +63,7 @@ export function TellerSearch() {
       isCancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSlugs]);
+  }, [selectedSlugs, isAcceptingOnly]);
 
   function handleToggleTag(slug: string) {
     setSelectedSlugs((current) =>
@@ -95,6 +97,15 @@ export function TellerSearch() {
             </HStack>
           </VStack>
         ))}
+
+        <HStack className="items-center justify-between">
+          <Text size="md">受付中のみ表示</Text>
+          <Switch
+            value={isAcceptingOnly}
+            onValueChange={setIsAcceptingOnly}
+            accessibilityLabel="受付中のみ表示"
+          />
+        </HStack>
       </VStack>
 
       {isLoading ? (

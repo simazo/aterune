@@ -463,7 +463,7 @@ export type Database = {
     }
     Functions: {
       search_tellers: {
-        Args: { p_tag_slugs?: string[] }
+        Args: { p_accepting_only?: boolean; p_tag_slugs?: string[] }
         Returns: {
           avatar_url: string
           average_rating: number
