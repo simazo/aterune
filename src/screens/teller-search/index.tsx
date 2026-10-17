@@ -75,26 +75,24 @@ export function TellerSearch() {
         {(Object.keys(CATEGORY_LABELS) as TagCategory[]).map((category) => (
           <VStack key={category} space="xs">
             <Heading size="sm">{CATEGORY_LABELS[category]}</Heading>
-            {/* タグが多いので、種類ごとに1行で横にスクロールさせる */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <HStack space="xs">
-                {tags
-                  .filter((tag) => tag.category === category)
-                  .map((tag) => {
-                    const isSelected = selectedSlugs.includes(tag.slug);
-                    return (
-                      <Button
-                        key={tag.id}
-                        size="sm"
-                        variant={isSelected ? 'default' : 'outline'}
-                        onPress={() => handleToggleTag(tag.slug)}
-                      >
-                        <ButtonText>{tag.name}</ButtonText>
-                      </Button>
-                    );
-                  })}
-              </HStack>
-            </ScrollView>
+            {/* 全タグが見えるよう、画面の幅で折り返す */}
+            <HStack className="flex-wrap" space="xs">
+              {tags
+                .filter((tag) => tag.category === category)
+                .map((tag) => {
+                  const isSelected = selectedSlugs.includes(tag.slug);
+                  return (
+                    <Button
+                      key={tag.id}
+                      size="sm"
+                      variant={isSelected ? 'default' : 'outline'}
+                      onPress={() => handleToggleTag(tag.slug)}
+                    >
+                      <ButtonText>{tag.name}</ButtonText>
+                    </Button>
+                  );
+                })}
+            </HStack>
           </VStack>
         ))}
       </VStack>
