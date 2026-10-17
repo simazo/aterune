@@ -111,3 +111,13 @@
   --color-accent: rgb(var(--accent));
   --color-accent-foreground: rgb(var(--accent-foreground));
 }
+
+/* Web の Select は透明な <select> を重ね、選択肢はブラウザ標準のリストで出す。
+   Tailwind の preflight が select の文字色を継承・背景を透明にするため、ダークモードでは
+   選択肢が白地に白文字になる。option にテーマの色を指定する */
+@layer base {
+  option {
+    background-color: rgb(var(--popover));
+    color: rgb(var(--popover-foreground));
+  }
+}
