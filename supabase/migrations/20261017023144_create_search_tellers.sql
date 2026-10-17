@@ -11,7 +11,8 @@
 --   ・newest:   占い師登録の新しい順(既定)
 --   ・rating:   平均評価の高い順。評価がまだ無い占い師は最後
 --   ・sessions: 完了セッション数の多い順
--- 結果の tags は、絞り込みに使ったタグだけでなく、その占い師の全タグ(種類 → 表示順)。
+-- 結果の tags は、絞り込みに使ったタグだけでなく、その占い師の全タグ。
+-- 並びは種類(占術 → 悩み → 回答のスタイル。画面の表示順に合わせる)→ 表示順。
 -- ログイン中のユーザー自身は結果に含めない(未ログインなら auth.uid() が null なので誰も除外しない)。
 -- 呼び出し元の権限で動けばよい(参照先はすべて誰でも読める)ので security definer は付けない。
 
@@ -55,7 +56,8 @@ as $$
     coalesce(
       (select jsonb_agg(
                 jsonb_build_object('slug', t.slug, 'category', t.category, 'name', t.name)
-                order by t.category, t.sort_order, t.name)
+                order by array_position(array['divination', 'concern', 'style'], t.category),
+                         t.sort_order, t.name)
          from public.teller_tags tt
          join public.tags t on t.id = tt.tag_id
         where tt.teller_id = tp.profile_id),

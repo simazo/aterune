@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(16);
 
 -- 1. RLS が有効
 select ok(
@@ -96,10 +96,16 @@ select throws_ok(
   $$ insert into public.tags (category, slug, name) values ('unknown', 'test-style-1', 'テストスタイル1') $$,
   '23514',
   null,
-  'tags.category は divination / style 以外にできない'
+  'tags.category は divination / style / concern 以外にできない'
 );
 
--- 13. name は NOT NULL
+-- 13. concern(悩み・相談)の種類で登録できる
+select lives_ok(
+  $$ insert into public.tags (category, slug, name) values ('concern', 'test-concern-1', 'テスト悩み1') $$,
+  'tags.category に concern を使える'
+);
+
+-- 14. name は NOT NULL
 select throws_ok(
   $$ insert into public.tags (category, slug, name) values ('style', 'test-style-1', null) $$,
   '23502',
@@ -107,7 +113,7 @@ select throws_ok(
   'tags.name は NULL にできない'
 );
 
--- 14. slug は NOT NULL
+-- 15. slug は NOT NULL
 select throws_ok(
   $$ insert into public.tags (category, slug, name) values ('style', null, 'テストスタイル1') $$,
   '23502',
@@ -115,7 +121,7 @@ select throws_ok(
   'tags.slug は NULL にできない'
 );
 
--- 15. category は NOT NULL
+-- 16. category は NOT NULL
 select throws_ok(
   $$ insert into public.tags (category, slug, name) values (null, 'test-style-1', 'テストスタイル1') $$,
   '23502',

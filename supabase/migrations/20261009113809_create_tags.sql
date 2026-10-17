@@ -1,4 +1,4 @@
--- tags: タグマスタ(占術・回答のスタイル)。ユーザーは読み取りのみ、書き込みは service_role / seed のみ。
+-- tags: タグマスタ(占術・悩み・回答のスタイル)。ユーザーは読み取りのみ、書き込みは service_role / seed のみ。
 create table public.tags (
   id         uuid primary key default gen_random_uuid(),
   category   text not null,
@@ -7,7 +7,7 @@ create table public.tags (
   sort_order integer not null default 0,
 
   constraint tags_category_check
-    check (category in ('divination', 'style')),
+    check (category in ('divination', 'concern', 'style')),
   -- URL やログで使う識別子。英小文字・数字をハイフンでつないだ形に限る
   constraint tags_slug_check
     check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
@@ -16,9 +16,9 @@ create table public.tags (
     unique (category, name)
 );
 
-comment on table  public.tags            is 'タグマスタ(占術・回答のスタイル)';
+comment on table  public.tags            is 'タグマスタ(占術・悩み・回答のスタイル)';
 comment on column public.tags.id         is 'タグID';
-comment on column public.tags.category   is 'タグの種類(divination=占術、style=回答のスタイル)';
+comment on column public.tags.category   is 'タグの種類(divination=占術、concern=悩み・相談内容、style=回答のスタイル)';
 comment on column public.tags.slug       is 'タグの識別子(URL・seed での参照用。種類をまたいで一意。英小文字・数字・ハイフンのみ)';
 comment on column public.tags.name       is 'タグの表示名(種類の中で一意)';
 comment on column public.tags.sort_order is '種類の中での表示順(小さいほど先)';

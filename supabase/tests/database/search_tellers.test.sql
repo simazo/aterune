@@ -1,9 +1,9 @@
 begin;
-select plan(23);
+select plan(24);
 
 -- ===== テストデータ(postgres 権限)=====
 -- seed に依存しないよう、タグ・占い師はすべてここで作る。結果はテストの占い師(d1〜d4)に絞って確かめる
--- d1: 占術1・スタイル1 / d2: 占術2・スタイル2 / d3: 占術1・占術2(受付停止中)/ d4: タグなし / d5: 占い師ではない
+-- d1: 占術1・悩み1・スタイル1 / d2: 占術2・悩み1・スタイル2 / d3: 占術1・占術2(受付停止中)/ d4: タグなし / d5: 占い師ではない
 insert into auth.users (id, email, raw_user_meta_data) values
   ('00000000-0000-0000-0000-0000000000d1', 'd1@example.com', '{"display_name":"テスト占い師1"}'),
   ('00000000-0000-0000-0000-0000000000d2', 'd2@example.com', '{"display_name":"テスト占い師2"}'),
@@ -41,16 +41,19 @@ update public.teller_profiles as tp
 
 -- 占術2 の表示順を占術1 より前にして、tags の並び順を確かめられるようにする
 insert into public.tags (id, category, slug, name, sort_order) values
-  ('00000000-0000-0000-0000-000000000d01', 'divination', 'test-div-1',   'テスト占術1',     2),
-  ('00000000-0000-0000-0000-000000000d02', 'divination', 'test-div-2',   'テスト占術2',     1),
-  ('00000000-0000-0000-0000-000000000d03', 'style',      'test-style-1', 'テストスタイル1', 1),
-  ('00000000-0000-0000-0000-000000000d04', 'style',      'test-style-2', 'テストスタイル2', 2);
+  ('00000000-0000-0000-0000-000000000d01', 'divination', 'test-div-1',     'テスト占術1',     2),
+  ('00000000-0000-0000-0000-000000000d02', 'divination', 'test-div-2',     'テスト占術2',     1),
+  ('00000000-0000-0000-0000-000000000d03', 'style',      'test-style-1',   'テストスタイル1', 1),
+  ('00000000-0000-0000-0000-000000000d04', 'style',      'test-style-2',   'テストスタイル2', 2),
+  ('00000000-0000-0000-0000-000000000d05', 'concern',    'test-concern-1', 'テスト悩み1',     1);
 
 insert into public.teller_tags (teller_id, tag_id) values
   ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-000000000d01'),
   ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-000000000d03'),
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-000000000d05'),
   ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-000000000d02'),
   ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-000000000d04'),
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-000000000d05'),
   ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-000000000d01'),
   ('00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-000000000d02');
 
@@ -126,7 +129,14 @@ select set_eq(
   '種類の違うタグを指定すると、すべての種類を満たす占い師だけを返す(AND)'
 );
 
--- 8. 存在しない slug は無視
+-- 8. 悩みタグも、ほかの種類のタグと AND で組み合わせる
+select set_eq(
+  $$ select teller_id from public.search_tellers(array['test-div-1', 'test-concern-1']) where teller_id in (select id from test_tellers) $$,
+  array['00000000-0000-0000-0000-0000000000d1']::uuid[],
+  '悩みタグと占術タグを指定すると、両方を持つ占い師だけを返す(AND)'
+);
+
+-- 9. 存在しない slug は無視
 select set_eq(
   $$ select teller_id from public.search_tellers(array['test-div-1', 'no-such-tag']) where teller_id in (select id from test_tellers) $$,
   array[
@@ -136,16 +146,17 @@ select set_eq(
   '存在しない slug は無視する'
 );
 
--- 9. 絞り込みに使っていないタグも含めて、全タグを返す
+-- 10. 絞り込みに使っていないタグも含めて、全タグを返す
 select is(
   (select tags from public.search_tellers(array['test-div-1'])
     where teller_id = '00000000-0000-0000-0000-0000000000d1'),
-  '[{"slug": "test-div-1",   "category": "divination", "name": "テスト占術1"},
-    {"slug": "test-style-1", "category": "style",      "name": "テストスタイル1"}]'::jsonb,
-  'tags には、絞り込みに使っていないタグも含めて全タグが入る'
+  '[{"slug": "test-div-1",     "category": "divination", "name": "テスト占術1"},
+    {"slug": "test-concern-1", "category": "concern",    "name": "テスト悩み1"},
+    {"slug": "test-style-1",   "category": "style",      "name": "テストスタイル1"}]'::jsonb,
+  'tags には、絞り込みに使っていないタグも含めて全タグが入る(種類は占術 → 悩み → スタイルの順)'
 );
 
--- 10. tags は種類 → 表示順の順
+-- 11. tags は種類 → 表示順の順
 select is(
   (select tags from public.search_tellers()
     where teller_id = '00000000-0000-0000-0000-0000000000d3'),
@@ -154,7 +165,7 @@ select is(
   'tags は種類 → 表示順(sort_order)の順に並ぶ'
 );
 
--- 11. タグの無い占い師は空配列
+-- 12. タグの無い占い師は空配列
 select is(
   (select tags from public.search_tellers()
     where teller_id = '00000000-0000-0000-0000-0000000000d4'),
@@ -162,7 +173,7 @@ select is(
   'タグの無い占い師の tags は空配列'
 );
 
--- 12. カード表示用の列
+-- 13. カード表示用の列
 select results_eq(
   $$ select display_name, self_pr, training_period, is_accepting, average_rating, review_count, session_count
        from public.search_tellers()
@@ -171,7 +182,7 @@ select results_eq(
   '表示名・自己PR・修行期間・受付状態・評価・レビュー数・完了セッション数を返す'
 );
 
--- 13. 受付停止中の占い師の is_accepting は false
+-- 14. 受付停止中の占い師の is_accepting は false
 select is(
   (select is_accepting from public.search_tellers()
     where teller_id = '00000000-0000-0000-0000-0000000000d3'),
@@ -179,7 +190,7 @@ select is(
   '受付停止中の占い師も返し、is_accepting は false'
 );
 
--- 14. 受付中のみ
+-- 15. 受付中のみ
 select set_eq(
   $$ select teller_id from public.search_tellers('{}', true) where teller_id in (select id from test_tellers) $$,
   array[
@@ -190,7 +201,7 @@ select set_eq(
   'p_accepting_only が true なら、受付停止中の占い師を返さない'
 );
 
--- 15. 明示的に false なら受付停止中も含む
+-- 16. 明示的に false なら受付停止中も含む
 select set_eq(
   $$ select teller_id from public.search_tellers('{}', false) where teller_id in (select id from test_tellers) $$,
   array[
@@ -202,14 +213,14 @@ select set_eq(
   'p_accepting_only が false なら、受付停止中の占い師も返す'
 );
 
--- 16. タグの絞り込みと組み合わせる
+-- 17. タグの絞り込みと組み合わせる
 select set_eq(
   $$ select teller_id from public.search_tellers(array['test-div-1'], true) where teller_id in (select id from test_tellers) $$,
   array['00000000-0000-0000-0000-0000000000d1']::uuid[],
   'タグと受付中のみを組み合わせると、両方を満たす占い師だけを返す'
 );
 
--- 17. 並び順の指定なしなら新着順
+-- 18. 並び順の指定なしなら新着順
 select results_eq(
   $$ select teller_id from public.search_tellers() where teller_id in (select id from test_tellers) $$,
   array[
@@ -221,7 +232,7 @@ select results_eq(
   '並び順を指定しなければ、占い師登録の新しい順に並ぶ'
 );
 
--- 18. 新着順
+-- 19. 新着順
 select results_eq(
   $$ select teller_id from public.search_tellers('{}', false, 'newest') where teller_id in (select id from test_tellers) $$,
   array[
@@ -233,7 +244,7 @@ select results_eq(
   'newest なら、占い師登録の新しい順に並ぶ'
 );
 
--- 19. 評価順
+-- 20. 評価順
 select results_eq(
   $$ select teller_id from public.search_tellers('{}', false, 'rating') where teller_id in (select id from test_tellers) $$,
   array[
@@ -245,7 +256,7 @@ select results_eq(
   'rating なら、平均評価の高い順に並ぶ(同点は新しい順、評価なしは最後)'
 );
 
--- 20. セッション数順
+-- 21. セッション数順
 select results_eq(
   $$ select teller_id from public.search_tellers('{}', false, 'sessions') where teller_id in (select id from test_tellers) $$,
   array[
@@ -257,7 +268,7 @@ select results_eq(
   'sessions なら、完了セッション数の多い順に並ぶ(同数は新しい順)'
 );
 
--- 21. 想定外の並び順はエラー
+-- 22. 想定外の並び順はエラー
 select throws_ok(
   $$ select * from public.search_tellers('{}', false, 'unknown') $$,
   '22P02',
@@ -272,7 +283,7 @@ set local role authenticated;
 select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-0000000000d1","role":"authenticated"}', true);
 
--- 22. 自分自身は返さない
+-- 23. 自分自身は返さない
 select set_eq(
   $$ select teller_id from public.search_tellers() where teller_id in (select id from test_tellers) $$,
   array[
@@ -283,7 +294,7 @@ select set_eq(
   'ログイン中の占い師には、自分自身を返さない'
 );
 
--- 23. ログイン中でもタグの絞り込みは効く
+-- 24. ログイン中でもタグの絞り込みは効く
 select set_eq(
   $$ select teller_id from public.search_tellers(array['test-div-1']) where teller_id in (select id from test_tellers) $$,
   array['00000000-0000-0000-0000-0000000000d3']::uuid[],
