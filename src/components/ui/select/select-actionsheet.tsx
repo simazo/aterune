@@ -1,9 +1,9 @@
 'use client';
 // gluestack-ui（main）からコピーしたもの。upstream からの変更点：
-// StyledScrollView の styled() の前に @ts-expect-error を付けた（コードそのものは upstream のまま）。
-// NativeWind v5 の styled() の型推論で tsc が TS2590（union 型が複雑すぎる）を出して失敗するため。
-// このエラーは最初に評価される styled()（ここでは ScrollView）1か所でだけ出て、
-// 後に続く VirtualizedList・FlatList などでは出ない。
+// styled() に渡す元の部品を、すべて `as React.ComponentType<any>` にした（マッピングは upstream のまま）。
+// NativeWind v5 の styled() はマッピングと部品の props の型チェックが重く、tsc が TS2590（union 型が複雑すぎる）で
+// 失敗するため。どの styled() でエラーになるかは型を調べる順番で変わる（画面から import すると別の行に移る）ので、
+// 一部の行だけでなく全部にそろえた。styled() の戻り値はもともと any なので型の情報は失われず、実行時の挙動も変わらない。
 
 import { H4 } from '@expo/html-elements';
 import { createActionsheet } from '@gluestack-ui/core/actionsheet/creator';
@@ -43,22 +43,21 @@ type IMotionViewProps = React.ComponentProps<typeof View> &
 
 const MotionView = Motion.View as React.ComponentType<IMotionViewProps>;
 
-const StyledMotionView = styled(MotionView, { className: 'style' });
-const StyledAnimatedPressable = styled(AnimatedPressable, { className: 'style' });
-// @ts-expect-error TS2590（union 型が複雑すぎる）。ファイル冒頭のコメント参照
-const StyledScrollView = styled(ScrollView, {
+const StyledMotionView = styled(MotionView as React.ComponentType<any>, { className: 'style' });
+const StyledAnimatedPressable = styled(AnimatedPressable as React.ComponentType<any>, { className: 'style' });
+const StyledScrollView = styled(ScrollView as React.ComponentType<any>, {
   className: 'style',
   contentContainerClassName: 'contentContainerStyle',
   indicatorClassName: 'indicatorStyle',
 });
-const StyledVirtualizedList = styled(VirtualizedList, {
+const StyledVirtualizedList = styled(VirtualizedList as React.ComponentType<any>, {
   className: 'style',
   ListFooterComponentClassName: 'ListFooterComponentStyle',
   ListHeaderComponentClassName: 'ListHeaderComponentStyle',
   contentContainerClassName: 'contentContainerStyle',
   indicatorClassName: 'indicatorStyle',
 });
-const StyledFlatList = styled(FlatList, {
+const StyledFlatList = styled(FlatList as React.ComponentType<any>, {
   className: 'style',
   ListFooterComponentClassName: 'ListFooterComponentStyle',
   ListHeaderComponentClassName: 'ListHeaderComponentStyle',
@@ -66,13 +65,13 @@ const StyledFlatList = styled(FlatList, {
   contentContainerClassName: 'contentContainerStyle',
   indicatorClassName: 'indicatorStyle',
 });
-const StyledIcon = styled(UIIcon, {
+const StyledIcon = styled(UIIcon as React.ComponentType<any>, {
   className: {
     target: 'style',
   },
 });
-const StyledSectionList = styled(SectionList, { className: 'style' });
-const StyledSectionHeaderText = styled(H4, { className: 'style' });
+const StyledSectionList = styled(SectionList as React.ComponentType<any>, { className: 'style' });
+const StyledSectionHeaderText = styled(H4 as React.ComponentType<any>, { className: 'style' });
 
 export const UIActionsheet = createActionsheet({
   Root: View,
