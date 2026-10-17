@@ -1,5 +1,5 @@
 begin;
-select plan(44);
+select plan(49);
 
 -- ===== テストデータ(postgres 権限) =====
 -- alice=占い師でもある相談者 / bob=占い師 / carol=占い師ではない一般ユーザー
@@ -383,6 +383,65 @@ select throws_ok(
      values ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f2',
              '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f2', 'consultant', 'x', 'done') $$,
   '23514', null, '想定外の status は入らない'
+);
+
+-- ===== 完了セッション数(teller_profiles.session_count)=====
+-- 上の流れに影響されないよう、専用の占い師 dave(f4)と carol(相談者)のセッションで確かめる
+select set_config('request.jwt.claims', '', true);
+
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-0000000000f4', 'dave@example.com');
+insert into public.teller_profiles (profile_id) values
+  ('00000000-0000-0000-0000-0000000000f4');
+
+-- 45-46. 集計関数はトリガー専用で、API から呼べない
+select is(
+  has_function_privilege('anon', 'public.update_teller_session_count()', 'execute'),
+  false, 'anon は update_teller_session_count を実行できない'
+);
+select is(
+  has_function_privilege('authenticated', 'public.update_teller_session_count()', 'execute'),
+  false, 'authenticated は update_teller_session_count を実行できない'
+);
+
+-- x1=completed / x2=auto_completed / x3=active / x4=rejected / x5=expired / x6=pending
+insert into public.sessions
+  (id, applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern, status)
+select v.id, '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f4',
+       '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f4', 'consultant', 'x', v.status
+  from (values
+    ('00000000-0000-0000-0000-000000000601'::uuid, 'completed'),
+    ('00000000-0000-0000-0000-000000000602'::uuid, 'auto_completed'),
+    ('00000000-0000-0000-0000-000000000603'::uuid, 'active'),
+    ('00000000-0000-0000-0000-000000000604'::uuid, 'rejected'),
+    ('00000000-0000-0000-0000-000000000605'::uuid, 'expired'),
+    ('00000000-0000-0000-0000-000000000606'::uuid, 'pending')
+  ) as v (id, status);
+
+-- 47. completed と auto_completed だけを数える
+select is(
+  (select session_count from public.teller_profiles where profile_id = '00000000-0000-0000-0000-0000000000f4'),
+  2, 'session_count は completed / auto_completed のセッションだけを数える'
+);
+
+-- 48. 相談者が完了すると増える
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000f3","role":"authenticated"}', true);
+update public.sessions set status = 'completed' where id = '00000000-0000-0000-0000-000000000603';
+reset role;
+select set_config('request.jwt.claims', '', true);
+
+select is(
+  (select session_count from public.teller_profiles where profile_id = '00000000-0000-0000-0000-0000000000f4'),
+  3, '相談者が完了操作をすると session_count が増える'
+);
+
+-- 49. 完了したセッションが消えると減る(ユーザー削除の連鎖などに備える)
+delete from public.sessions where id = '00000000-0000-0000-0000-000000000601';
+
+select is(
+  (select session_count from public.teller_profiles where profile_id = '00000000-0000-0000-0000-0000000000f4'),
+  2, '完了したセッションが削除されると session_count が減る'
 );
 
 select * from finish();

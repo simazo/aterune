@@ -209,11 +209,36 @@ begin
 end;
 $$;
 
+-- 占い師の完了セッション数のキャッシュ(teller_profiles.session_count)を数え直す。
+-- completed / auto_completed を数える。sessions は RLS で当事者しか読めず、
+-- 検索などで他人の件数を数えられないため、キャッシュとして持つ。
+-- 削除でも動かすのは、ユーザーの連鎖削除でセッションが消えた場合に備えるため。
+create function public.update_teller_session_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  v_teller uuid := case when tg_op = 'DELETE' then old.teller_id else new.teller_id end;
+begin
+  update public.teller_profiles
+     set session_count = (
+       select count(*) from public.sessions
+        where teller_id = v_teller
+          and status in ('completed', 'auto_completed')
+     )
+   where profile_id = v_teller;
+  return null; -- AFTER トリガーなので戻り値は使われない
+end;
+$$;
+
 -- トリガー専用関数: Supabase が anon / authenticated に自動付与する権限も外す
 revoke all on function public.check_session_post()           from public, anon, authenticated;
 revoke all on function public.copy_post_content_to_session() from public, anon, authenticated;
 revoke all on function public.guard_session_status_change()  from public, anon, authenticated;
 revoke all on function public.sync_post_status()             from public, anon, authenticated;
+revoke all on function public.update_teller_session_count()  from public, anon, authenticated;
 
 -- ============================================================
 -- トリガー
@@ -237,6 +262,10 @@ create trigger sessions_set_updated_at
 create trigger sessions_sync_post_status
   after insert or update of status on public.sessions
   for each row execute function public.sync_post_status();
+
+create trigger sessions_update_teller_session_count
+  after insert or update of status or delete on public.sessions
+  for each row execute function public.update_teller_session_count();
 
 -- ============================================================
 -- RLS・GRANT
