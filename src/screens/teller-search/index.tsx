@@ -3,20 +3,7 @@ import { searchTellers } from '@/api/tellers';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Heading } from '@/components/ui/heading';
 import { HStack } from '@/components/ui/hstack';
-import { ChevronDownIcon } from '@/components/ui/icon';
 import { ScrollView } from '@/components/ui/scroll-view';
-import {
-  Select,
-  SelectBackdrop,
-  SelectContent,
-  SelectDragIndicator,
-  SelectDragIndicatorWrapper,
-  SelectIcon,
-  SelectInput,
-  SelectItem,
-  SelectPortal,
-  SelectTrigger,
-} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
@@ -85,12 +72,6 @@ export function TellerSearch() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSlugs, isAcceptingOnly, sort]);
 
-  function handleChangeSort(value: string) {
-    // Select の値は string で届くので、候補にあるものだけを受け付ける
-    const option = SORT_OPTIONS.find((o) => o.value === value);
-    if (option) setSort(option.value);
-  }
-
   function handleToggleTag(slug: string) {
     setSelectedSlugs((current) =>
       current.includes(slug) ? current.filter((s) => s !== slug) : [...current, slug]
@@ -133,30 +114,21 @@ export function TellerSearch() {
           />
         </HStack>
 
-        <HStack className="items-center justify-between" space="md">
+        {/* 選択肢が少ないので、メニューを開かずに1回のタップで切り替えられるようボタンを並べる */}
+        <HStack className="flex-wrap items-center justify-between gap-2">
           <Text size="md">並び順</Text>
-          <Select
-            className="w-44"
-            selectedValue={sort}
-            initialLabel={SORT_OPTIONS.find((o) => o.value === sort)?.label}
-            onValueChange={handleChangeSort}
-          >
-            <SelectTrigger>
-              <SelectInput />
-              <SelectIcon className="mr-3" as={ChevronDownIcon} />
-            </SelectTrigger>
-            <SelectPortal>
-              <SelectBackdrop />
-              <SelectContent>
-                <SelectDragIndicatorWrapper>
-                  <SelectDragIndicator />
-                </SelectDragIndicatorWrapper>
-                {SORT_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} label={option.label} value={option.value} />
-                ))}
-              </SelectContent>
-            </SelectPortal>
-          </Select>
+          <HStack space="xs">
+            {SORT_OPTIONS.map((option) => (
+              <Button
+                key={option.value}
+                size="sm"
+                variant={sort === option.value ? 'default' : 'outline'}
+                onPress={() => setSort(option.value)}
+              >
+                <ButtonText>{option.label}</ButtonText>
+              </Button>
+            ))}
+          </HStack>
         </HStack>
       </VStack>
 
