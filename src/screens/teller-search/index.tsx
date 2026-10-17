@@ -3,13 +3,26 @@ import { searchTellers } from '@/api/tellers';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Heading } from '@/components/ui/heading';
 import { HStack } from '@/components/ui/hstack';
+import { ChevronDownIcon } from '@/components/ui/icon';
 import { ScrollView } from '@/components/ui/scroll-view';
+import {
+  Select,
+  SelectBackdrop,
+  SelectContent,
+  SelectDragIndicator,
+  SelectDragIndicatorWrapper,
+  SelectIcon,
+  SelectInput,
+  SelectItem,
+  SelectPortal,
+  SelectTrigger,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useErrorToast } from '@/hooks/use-error-toast';
-import type { Tag, TagCategory, TellerSearchResult } from '@/types';
+import type { Tag, TagCategory, TellerSearchResult, TellerSortOrder } from '@/types';
 import { useEffect, useState } from 'react';
 import { TellerCard } from './components/teller-card';
 
@@ -20,12 +33,19 @@ const CATEGORY_LABELS: Record<TagCategory, string> = {
   style: '回答のスタイル',
 };
 
-// TODO: 仮実装。並び順・件数が多いときのページ送りは未対応
+const SORT_OPTIONS: { value: TellerSortOrder; label: string }[] = [
+  { value: 'newest', label: '新着順' },
+  { value: 'rating', label: '評価順' },
+  { value: 'sessions', label: 'セッション数順' },
+];
+
+// TODO: 仮実装。件数が多いときのページ送りは未対応
 export function TellerSearch() {
   const showError = useErrorToast();
   const [tags, setTags] = useState<TagOption[]>([]);
   const [selectedSlugs, setSelectedSlugs] = useState<string[]>([]);
   const [isAcceptingOnly, setIsAcceptingOnly] = useState(false);
+  const [sort, setSort] = useState<TellerSortOrder>('newest');
   const [tellers, setTellers] = useState<TellerSearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -48,7 +68,7 @@ export function TellerSearch() {
 
     (async () => {
       setIsLoading(true);
-      const { data, error } = await searchTellers({ tagSlugs: selectedSlugs, isAcceptingOnly });
+      const { data, error } = await searchTellers({ tagSlugs: selectedSlugs, isAcceptingOnly, sort });
       if (isCancelled) return;
 
       if (error) {
@@ -63,7 +83,13 @@ export function TellerSearch() {
       isCancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSlugs, isAcceptingOnly]);
+  }, [selectedSlugs, isAcceptingOnly, sort]);
+
+  function handleChangeSort(value: string) {
+    // Select の値は string で届くので、候補にあるものだけを受け付ける
+    const option = SORT_OPTIONS.find((o) => o.value === value);
+    if (option) setSort(option.value);
+  }
 
   function handleToggleTag(slug: string) {
     setSelectedSlugs((current) =>
@@ -105,6 +131,32 @@ export function TellerSearch() {
             onValueChange={setIsAcceptingOnly}
             accessibilityLabel="受付中のみ表示"
           />
+        </HStack>
+
+        <HStack className="items-center justify-between" space="md">
+          <Text size="md">並び順</Text>
+          <Select
+            className="w-44"
+            selectedValue={sort}
+            initialLabel={SORT_OPTIONS.find((o) => o.value === sort)?.label}
+            onValueChange={handleChangeSort}
+          >
+            <SelectTrigger>
+              <SelectInput />
+              <SelectIcon className="mr-3" as={ChevronDownIcon} />
+            </SelectTrigger>
+            <SelectPortal>
+              <SelectBackdrop />
+              <SelectContent>
+                <SelectDragIndicatorWrapper>
+                  <SelectDragIndicator />
+                </SelectDragIndicatorWrapper>
+                {SORT_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} label={option.label} value={option.value} />
+                ))}
+              </SelectContent>
+            </SelectPortal>
+          </Select>
         </HStack>
       </VStack>
 

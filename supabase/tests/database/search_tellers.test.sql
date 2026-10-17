@@ -1,5 +1,5 @@
 begin;
-select plan(18);
+select plan(23);
 
 -- ===== テストデータ(postgres 権限)=====
 -- seed に依存しないよう、タグ・占い師はすべてここで作る。結果はテストの占い師(d1〜d4)に絞って確かめる
@@ -17,10 +17,27 @@ insert into public.teller_profiles (profile_id, self_pr, training_period, is_acc
   ('00000000-0000-0000-0000-0000000000d3', 'd3 の自己PR', '3年',  false),
   ('00000000-0000-0000-0000-0000000000d4', 'd4 の自己PR', null,   true);
 
--- キャッシュ値は postgres 権限で直接入れる(結果の列に載ることの確認用)
-update public.teller_profiles
-   set average_rating = 4.50, review_count = 2, session_count = 3
- where profile_id = '00000000-0000-0000-0000-0000000000d1';
+-- キャッシュ値と登録日時は postgres 権限で直接入れる(結果の列・並び順の確認用)。
+-- 同じトランザクション内では now() が同じになるため、created_at は日をずらして入れる
+--        評価  レビュー数  セッション数  登録
+--   d1:  4.50  2           3             4日前
+--   d2:  3.00  1           10            3日前
+--   d3:  なし  0           0             2日前
+--   d4:  4.50  1           3             1日前
+-- 新着順: d4, d3, d2, d1 / 評価順: d4, d1(同点は新しい順), d2, d3(評価なしは最後)
+-- セッション数順: d2, d4, d1(同数は新しい順), d3
+update public.teller_profiles as tp
+   set average_rating = v.average_rating,
+       review_count   = v.review_count,
+       session_count  = v.session_count,
+       created_at     = now() - v.days_ago * interval '1 day'
+  from (values
+    ('00000000-0000-0000-0000-0000000000d1'::uuid, 4.50, 2, 3,  4),
+    ('00000000-0000-0000-0000-0000000000d2'::uuid, 3.00, 1, 10, 3),
+    ('00000000-0000-0000-0000-0000000000d3'::uuid, null, 0, 0,  2),
+    ('00000000-0000-0000-0000-0000000000d4'::uuid, 4.50, 1, 3,  1)
+  ) as v (profile_id, average_rating, review_count, session_count, days_ago)
+ where tp.profile_id = v.profile_id;
 
 -- 占術2 の表示順を占術1 より前にして、tags の並び順を確かめられるようにする
 insert into public.tags (id, category, slug, name, sort_order) values
@@ -50,11 +67,11 @@ grant select on test_tellers to anon, authenticated;
 
 -- 1-2. 実行権限
 select ok(
-  has_function_privilege('anon', 'public.search_tellers(text[], boolean)', 'execute'),
+  has_function_privilege('anon', 'public.search_tellers(text[], boolean, public.teller_sort_order)', 'execute'),
   'anon は search_tellers を実行できる'
 );
 select ok(
-  has_function_privilege('authenticated', 'public.search_tellers(text[], boolean)', 'execute'),
+  has_function_privilege('authenticated', 'public.search_tellers(text[], boolean, public.teller_sort_order)', 'execute'),
   'authenticated は search_tellers を実行できる'
 );
 
@@ -192,6 +209,62 @@ select set_eq(
   'タグと受付中のみを組み合わせると、両方を満たす占い師だけを返す'
 );
 
+-- 17. 並び順の指定なしなら新着順
+select results_eq(
+  $$ select teller_id from public.search_tellers() where teller_id in (select id from test_tellers) $$,
+  array[
+    '00000000-0000-0000-0000-0000000000d4',
+    '00000000-0000-0000-0000-0000000000d3',
+    '00000000-0000-0000-0000-0000000000d2',
+    '00000000-0000-0000-0000-0000000000d1'
+  ]::uuid[],
+  '並び順を指定しなければ、占い師登録の新しい順に並ぶ'
+);
+
+-- 18. 新着順
+select results_eq(
+  $$ select teller_id from public.search_tellers('{}', false, 'newest') where teller_id in (select id from test_tellers) $$,
+  array[
+    '00000000-0000-0000-0000-0000000000d4',
+    '00000000-0000-0000-0000-0000000000d3',
+    '00000000-0000-0000-0000-0000000000d2',
+    '00000000-0000-0000-0000-0000000000d1'
+  ]::uuid[],
+  'newest なら、占い師登録の新しい順に並ぶ'
+);
+
+-- 19. 評価順
+select results_eq(
+  $$ select teller_id from public.search_tellers('{}', false, 'rating') where teller_id in (select id from test_tellers) $$,
+  array[
+    '00000000-0000-0000-0000-0000000000d4',
+    '00000000-0000-0000-0000-0000000000d1',
+    '00000000-0000-0000-0000-0000000000d2',
+    '00000000-0000-0000-0000-0000000000d3'
+  ]::uuid[],
+  'rating なら、平均評価の高い順に並ぶ(同点は新しい順、評価なしは最後)'
+);
+
+-- 20. セッション数順
+select results_eq(
+  $$ select teller_id from public.search_tellers('{}', false, 'sessions') where teller_id in (select id from test_tellers) $$,
+  array[
+    '00000000-0000-0000-0000-0000000000d2',
+    '00000000-0000-0000-0000-0000000000d4',
+    '00000000-0000-0000-0000-0000000000d1',
+    '00000000-0000-0000-0000-0000000000d3'
+  ]::uuid[],
+  'sessions なら、完了セッション数の多い順に並ぶ(同数は新しい順)'
+);
+
+-- 21. 想定外の並び順はエラー
+select throws_ok(
+  $$ select * from public.search_tellers('{}', false, 'unknown') $$,
+  '22P02',
+  null,
+  '想定外の並び順を指定するとエラーになる'
+);
+
 reset role;
 
 -- ===== ログイン中の占い師(d1)=====
@@ -199,7 +272,7 @@ set local role authenticated;
 select set_config('request.jwt.claims',
   '{"sub":"00000000-0000-0000-0000-0000000000d1","role":"authenticated"}', true);
 
--- 17. 自分自身は返さない
+-- 22. 自分自身は返さない
 select set_eq(
   $$ select teller_id from public.search_tellers() where teller_id in (select id from test_tellers) $$,
   array[
@@ -210,7 +283,7 @@ select set_eq(
   'ログイン中の占い師には、自分自身を返さない'
 );
 
--- 18. ログイン中でもタグの絞り込みは効く
+-- 23. ログイン中でもタグの絞り込みは効く
 select set_eq(
   $$ select teller_id from public.search_tellers(array['test-div-1']) where teller_id in (select id from test_tellers) $$,
   array['00000000-0000-0000-0000-0000000000d3']::uuid[],

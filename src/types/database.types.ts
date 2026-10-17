@@ -463,7 +463,11 @@ export type Database = {
     }
     Functions: {
       search_tellers: {
-        Args: { p_accepting_only?: boolean; p_tag_slugs?: string[] }
+        Args: {
+          p_accepting_only?: boolean
+          p_sort?: Database["public"]["Enums"]["teller_sort_order"]
+          p_tag_slugs?: string[]
+        }
         Returns: {
           avatar_url: string
           average_rating: number
@@ -479,7 +483,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      teller_sort_order: "newest" | "rating" | "sessions"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -609,7 +613,9 @@ export const Constants = {
     Enums: {},
   },
   public: {
-    Enums: {},
+    Enums: {
+      teller_sort_order: ["newest", "rating", "sessions"],
+    },
   },
 } as const
 

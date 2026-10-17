@@ -1,4 +1,4 @@
-import type { Database, Tables } from './database.types';
+import type { Database, Enums, Tables } from './database.types';
 
 export type Profile = Tables<'profiles'>;
 export type ProfilePrivateDetails = Tables<'profile_private_details'>;
@@ -14,6 +14,9 @@ export type PushToken = Tables<'push_tokens'>;
 
 // tags.category の CHECK 制約と合わせる
 export type TagCategory = 'divination' | 'style';
+
+// search_tellers の並び順（DB の enum teller_sort_order）
+export type TellerSortOrder = Enums<'teller_sort_order'>;
 
 // search_tellers の結果に入る、占い師のタグ
 export type TellerTag = {
