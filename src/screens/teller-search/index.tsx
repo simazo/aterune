@@ -1,7 +1,6 @@
 import { listTags } from '@/api/tags';
 import { searchTellers } from '@/api/tellers';
 import { Button, ButtonText } from '@/components/ui/button';
-import { Heading } from '@/components/ui/heading';
 import { HStack } from '@/components/ui/hstack';
 import { ScrollView } from '@/components/ui/scroll-view';
 import { Spinner } from '@/components/ui/spinner';
@@ -9,11 +8,10 @@ import { Switch } from '@/components/ui/switch';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useErrorToast } from '@/hooks/use-error-toast';
-import type { Tag, TagCategory, TellerSearchResult, TellerSortOrder } from '@/types';
+import type { TagCategory, TellerSearchResult, TellerSortOrder } from '@/types';
 import { useEffect, useState } from 'react';
+import { TagFilterSection, type TagOption } from './components/tag-filter-section';
 import { TellerCard } from './components/teller-card';
-
-type TagOption = Pick<Tag, 'id' | 'category' | 'slug' | 'name'>;
 
 // セクションはこのキーの順に並ぶ（search_tellers が返すカードのタグの並びと合わせる）
 const CATEGORY_LABELS: Record<TagCategory, string> = {
@@ -84,27 +82,13 @@ export function TellerSearch() {
     <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4 gap-6">
       <VStack space="md">
         {(Object.keys(CATEGORY_LABELS) as TagCategory[]).map((category) => (
-          <VStack key={category} space="xs">
-            <Heading size="sm">{CATEGORY_LABELS[category]}</Heading>
-            {/* 全タグが見えるよう、画面の幅で折り返す */}
-            <HStack className="flex-wrap" space="xs">
-              {tags
-                .filter((tag) => tag.category === category)
-                .map((tag) => {
-                  const isSelected = selectedSlugs.includes(tag.slug);
-                  return (
-                    <Button
-                      key={tag.id}
-                      size="sm"
-                      variant={isSelected ? 'default' : 'outline'}
-                      onPress={() => handleToggleTag(tag.slug)}
-                    >
-                      <ButtonText>{tag.name}</ButtonText>
-                    </Button>
-                  );
-                })}
-            </HStack>
-          </VStack>
+          <TagFilterSection
+            key={category}
+            label={CATEGORY_LABELS[category]}
+            tags={tags.filter((tag) => tag.category === category)}
+            selectedSlugs={selectedSlugs}
+            onToggleTag={handleToggleTag}
+          />
         ))}
 
         <HStack className="items-center justify-between">
