@@ -462,6 +462,23 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_teller: {
+        Args: { p_teller_id: string }
+        Returns: {
+          avatar_url: string
+          average_rating: number
+          created_at: string
+          display_name: string
+          is_accepting: boolean
+          requires_birthdate: boolean
+          review_count: number
+          self_pr: string
+          session_count: number
+          tags: Json
+          teller_id: string
+          training_period: string
+        }[]
+      }
       search_tellers: {
         Args: {
           p_accepting_only?: boolean
