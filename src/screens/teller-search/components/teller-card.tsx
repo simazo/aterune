@@ -8,8 +8,15 @@ import { VStack } from '@/components/ui/vstack';
 import type { TellerSearchResult } from '@/types';
 import { isNewcomer } from '@/utils/teller';
 
-// カード上部の帯の色。占い師ごとに固定の1色を選ぶ（Tailwind が拾えるようクラス名は省略せずに書く）
-const ACCENT_CLASSES = ['bg-violet-200', 'bg-pink-200', 'bg-emerald-200', 'bg-amber-200', 'bg-sky-200'];
+// カード上部の帯の色。占い師ごとに固定の1色を選ぶ（Tailwind が拾えるようクラス名は省略せずに書く）。
+// ダークでは淡い色が浮いてまぶしいため、同じ色味の暗い色を半透明にしてカードの色になじませる
+const ACCENT_CLASSES = [
+  'bg-violet-200 dark:bg-violet-800/40',
+  'bg-pink-200 dark:bg-pink-800/40',
+  'bg-emerald-200 dark:bg-emerald-800/40',
+  'bg-amber-200 dark:bg-amber-800/40',
+  'bg-sky-200 dark:bg-sky-800/40',
+];
 
 function getAccentClass(tellerId: string) {
   let sum = 0;
@@ -88,7 +95,7 @@ export function TellerCard({ teller }: Props) {
               </Text>
             ) : (
               <>
-                <Text size="sm" className="text-amber-400">
+                <Text size="sm" className="text-amber-500 dark:text-amber-400">
                   ★
                 </Text>{' '}
                 {teller.average_rating.toFixed(1)}
