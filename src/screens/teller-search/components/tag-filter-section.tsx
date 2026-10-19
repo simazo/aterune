@@ -1,3 +1,4 @@
+import { SelectableButton } from '@/components/selectable-button';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Heading } from '@/components/ui/heading';
 import { HStack } from '@/components/ui/hstack';
@@ -34,16 +35,13 @@ export function TagFilterSection({ label, tags, selectedSlugs, onToggleTag }: Pr
       {/* 表示するタグが見えるよう、画面の幅で折り返す */}
       <HStack className="flex-wrap" space="xs">
         {visibleTags.map((tag) => {
-          const isSelected = selectedSlugs.includes(tag.slug);
           return (
-            <Button
+            <SelectableButton
               key={tag.id}
-              size="sm"
-              variant={isSelected ? 'default' : 'outline'}
+              label={tag.name}
+              isSelected={selectedSlugs.includes(tag.slug)}
               onPress={() => onToggleTag(tag.slug)}
-            >
-              <ButtonText>{tag.name}</ButtonText>
-            </Button>
+            />
           );
         })}
       </HStack>

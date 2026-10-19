@@ -1,6 +1,6 @@
 import { listTags } from '@/api/tags';
 import { searchTellers } from '@/api/tellers';
-import { Button, ButtonText } from '@/components/ui/button';
+import { SelectableButton } from '@/components/selectable-button';
 import { HStack } from '@/components/ui/hstack';
 import { ScrollView } from '@/components/ui/scroll-view';
 import { Spinner } from '@/components/ui/spinner';
@@ -105,14 +105,12 @@ export function TellerSearch() {
           <Text size="md">並び順</Text>
           <HStack space="xs">
             {SORT_OPTIONS.map((option) => (
-              <Button
+              <SelectableButton
                 key={option.value}
-                size="sm"
-                variant={sort === option.value ? 'default' : 'outline'}
+                label={option.label}
+                isSelected={sort === option.value}
                 onPress={() => setSort(option.value)}
-              >
-                <ButtonText>{option.label}</ButtonText>
-              </Button>
+              />
             ))}
           </HStack>
         </HStack>
