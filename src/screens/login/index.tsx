@@ -7,6 +7,7 @@ import { Input, InputField } from '@/components/ui/input';
 import { Link, LinkText } from '@/components/ui/link';
 import { VStack } from '@/components/ui/vstack';
 import { useErrorToast } from '@/hooks/use-error-toast';
+import { getAuthErrorMessage } from '@/utils/auth-error';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -32,7 +33,7 @@ export function Login() {
     const { error } = await signInWithEmail(email, password);
 
     if (error) {
-      showError(error.message);
+      showError(getAuthErrorMessage(error));
     } else {
       // ログイン成功 → push token登録
       await savePushTokenForCurrentUser();
