@@ -1,9 +1,10 @@
 import { signInWithEmail } from '@/api/auth';
 import { savePushTokenForCurrentUser } from '@/api/push-tokens';
+import { FilledInput } from '@/components/filled-input';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
 import { FormControl, FormControlError, FormControlErrorText } from '@/components/ui/form-control';
 import { Heading } from '@/components/ui/heading';
-import { Input, InputField } from '@/components/ui/input';
+import { InputField } from '@/components/ui/input';
 import { Link, LinkText } from '@/components/ui/link';
 import { VStack } from '@/components/ui/vstack';
 import { useErrorToast } from '@/hooks/use-error-toast';
@@ -52,7 +53,7 @@ export function Login() {
         name="email"
         render={({ field: { value, onChange, onBlur } }) => (
           <FormControl isInvalid={!!errors.email}>
-            <Input>
+            <FilledInput>
               <InputField
                 placeholder="メールアドレス"
                 value={value}
@@ -61,7 +62,7 @@ export function Login() {
                 autoCapitalize="none"
                 keyboardType="email-address"
               />
-            </Input>
+            </FilledInput>
             <FormControlError>
               <FormControlErrorText>{errors.email?.message}</FormControlErrorText>
             </FormControlError>
@@ -74,7 +75,7 @@ export function Login() {
         name="password"
         render={({ field: { value, onChange, onBlur } }) => (
           <FormControl isInvalid={!!errors.password}>
-            <Input>
+            <FilledInput>
               <InputField
                 placeholder="パスワード"
                 value={value}
@@ -82,7 +83,7 @@ export function Login() {
                 onBlur={onBlur}
                 secureTextEntry
               />
-            </Input>
+            </FilledInput>
             <FormControlError>
               <FormControlErrorText>{errors.password?.message}</FormControlErrorText>
             </FormControlError>

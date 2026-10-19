@@ -1,8 +1,9 @@
 import { signUpWithEmail } from '@/api/auth';
+import { FilledInput } from '@/components/filled-input';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
 import { FormControl, FormControlError, FormControlErrorText } from '@/components/ui/form-control';
 import { Heading } from '@/components/ui/heading';
-import { Input, InputField } from '@/components/ui/input';
+import { InputField } from '@/components/ui/input';
 import { Link, LinkText } from '@/components/ui/link';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
@@ -67,14 +68,14 @@ export function Signup() {
         name="displayName"
         render={({ field: { value, onChange, onBlur } }) => (
           <FormControl isInvalid={!!errors.displayName}>
-            <Input>
+            <FilledInput>
               <InputField
                 placeholder="表示名"
                 value={value}
                 onChangeText={onChange}
                 onBlur={onBlur}
               />
-            </Input>
+            </FilledInput>
             <FormControlError>
               <FormControlErrorText>{errors.displayName?.message}</FormControlErrorText>
             </FormControlError>
@@ -87,7 +88,7 @@ export function Signup() {
         name="email"
         render={({ field: { value, onChange, onBlur } }) => (
           <FormControl isInvalid={!!errors.email}>
-            <Input>
+            <FilledInput>
               <InputField
                 placeholder="メールアドレス"
                 value={value}
@@ -96,7 +97,7 @@ export function Signup() {
                 autoCapitalize="none"
                 keyboardType="email-address"
               />
-            </Input>
+            </FilledInput>
             <FormControlError>
               <FormControlErrorText>{errors.email?.message}</FormControlErrorText>
             </FormControlError>
@@ -109,7 +110,7 @@ export function Signup() {
         name="password"
         render={({ field: { value, onChange, onBlur } }) => (
           <FormControl isInvalid={!!errors.password}>
-            <Input>
+            <FilledInput>
               <InputField
                 placeholder="パスワード"
                 value={value}
@@ -117,7 +118,7 @@ export function Signup() {
                 onBlur={onBlur}
                 secureTextEntry
               />
-            </Input>
+            </FilledInput>
             <FormControlError>
               <FormControlErrorText>{errors.password?.message}</FormControlErrorText>
             </FormControlError>
