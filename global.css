@@ -8,86 +8,89 @@
    2. @media dark :root  — dark defaults; nativewind maps this to
                            Appearance.getColorScheme() on native.
    3. :root.dark / :root.light — higher specificity for web class toggle. */
+/* ブランドカラーはピンクライラック（primary）。背景・カード・枠線などにもごくわずかに混ぜている。
+   ヘッダー・タブバー（react-navigation）の色は src/lib/navigation-theme.ts で別に指定しているので、
+   ここを変えたらそちらも揃えること */
 @layer theme {
   :root {
-    --primary: 23 23 23;
-    --primary-foreground: 250 250 250;
+    --primary: 190 70 160;
+    --primary-foreground: 255 255 255;
     --card: 255 255 255;
-    --secondary: 245 245 245;
+    --secondary: 242 236 242;
     --secondary-foreground: 23 23 23;
-    --background: 255 255 255;
+    --background: 253 250 253;
     --popover: 255 255 255;
     --popover-foreground: 10 10 10;
-    --muted: 245 245 245;
+    --muted: 242 236 242;
     --muted-foreground: 115 115 115;
     --destructive: 231 0 11;
     --foreground: 10 10 10;
-    --border: 229 229 229;
-    --input: 229 229 229;
-    --ring: 212 212 212;
-    --accent: 247 247 247;
+    --border: 227 219 226;
+    --input: 227 219 226;
+    --ring: 190 70 160;
+    --accent: 244 238 244;
     --accent-foreground: 52 52 52;
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --primary: 255 245 245;
-      --primary-foreground: 23 23 23;
-      --card: 23 23 23;
-      --secondary: 38 38 38;
+      --primary: 232 150 220;
+      --primary-foreground: 52 32 50;
+      --card: 42 34 41;
+      --secondary: 58 48 57;
       --secondary-foreground: 250 250 250;
-      --background: 10 10 10;
-      --popover: 23 23 23;
+      --background: 23 17 23;
+      --popover: 42 34 41;
       --popover-foreground: 250 250 250;
-      --muted: 38 38 38;
+      --muted: 58 48 57;
       --muted-foreground: 161 161 161;
       --destructive: 255 100 103;
       --foreground: 250 250 250;
-      --border: 46 46 46;
-      --input: 46 46 46;
-      --accent: 38 38 38;
+      --border: 77 65 76;
+      --input: 77 65 76;
+      --accent: 58 48 57;
       --accent-foreground: 250 250 250;
-      --ring: 115 115 115;
+      --ring: 232 150 220;
     }
   }
 
   :root.dark {
-    --primary: 255 245 245;
-    --primary-foreground: 23 23 23;
-    --card: 23 23 23;
-    --secondary: 38 38 38;
+    --primary: 232 150 220;
+    --primary-foreground: 52 32 50;
+    --card: 42 34 41;
+    --secondary: 58 48 57;
     --secondary-foreground: 250 250 250;
-    --background: 10 10 10;
-    --popover: 23 23 23;
+    --background: 23 17 23;
+    --popover: 42 34 41;
     --popover-foreground: 250 250 250;
-    --muted: 38 38 38;
+    --muted: 58 48 57;
     --muted-foreground: 161 161 161;
     --destructive: 255 100 103;
     --foreground: 250 250 250;
-    --border: 46 46 46;
-    --input: 46 46 46;
-    --accent: 38 38 38;
+    --border: 77 65 76;
+    --input: 77 65 76;
+    --accent: 58 48 57;
     --accent-foreground: 250 250 250;
-    --ring: 115 115 115;
+    --ring: 232 150 220;
   }
 
   :root.light {
-    --primary: 23 23 23;
-    --primary-foreground: 250 250 250;
+    --primary: 190 70 160;
+    --primary-foreground: 255 255 255;
     --card: 255 255 255;
-    --secondary: 245 245 245;
+    --secondary: 242 236 242;
     --secondary-foreground: 23 23 23;
-    --background: 255 255 255;
+    --background: 253 250 253;
     --popover: 255 255 255;
     --popover-foreground: 10 10 10;
-    --muted: 245 245 245;
+    --muted: 242 236 242;
     --muted-foreground: 115 115 115;
     --destructive: 231 0 11;
     --foreground: 10 10 10;
-    --border: 229 229 229;
-    --input: 229 229 229;
-    --ring: 212 212 212;
-    --accent: 247 247 247;
+    --border: 227 219 226;
+    --input: 227 219 226;
+    --ring: 190 70 160;
+    --accent: 244 238 244;
     --accent-foreground: 52 52 52;
   }
 }
