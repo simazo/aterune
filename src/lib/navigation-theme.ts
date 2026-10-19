@@ -7,7 +7,7 @@ export const LIGHT_NAVIGATION_THEME: Theme = {
   ...DefaultTheme,
   colors: {
     primary: 'rgb(190, 70, 160)',
-    background: 'rgb(253, 250, 253)',
+    background: 'rgb(246, 239, 245)',
     card: 'rgb(255, 255, 255)',
     text: 'rgb(10, 10, 10)',
     border: 'rgb(227, 219, 226)',
