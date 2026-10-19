@@ -71,6 +71,14 @@ describe('savePushTokenForCurrentUser', () => {
     expect(upsert).toHaveBeenCalled();
     expect(mockLogger.warn).toHaveBeenCalledWith('push_tokens登録エラー:', 'upsert failed');
   });
+
+  it('tokenの取得で例外が出ても例外を投げずに終わり、warnでログを出す', async () => {
+    mockRegisterForPushNotificationsAsync.mockRejectedValue(new Error('offline'));
+
+    await expect(savePushTokenForCurrentUser()).resolves.toBeUndefined();
+    expect(mockSupabase.from).not.toHaveBeenCalled();
+    expect(mockLogger.warn).toHaveBeenCalledWith('push token登録中に例外:', 'offline');
+  });
 });
 
 describe('deletePushTokenForCurrentDevice', () => {
@@ -101,5 +109,13 @@ describe('deletePushTokenForCurrentDevice', () => {
     await deletePushTokenForCurrentDevice();
 
     expect(mockSupabase.from).not.toHaveBeenCalled();
+  });
+
+  it('tokenの取得で例外が出ても例外を投げずに終わり、warnでログを出す', async () => {
+    mockRegisterForPushNotificationsAsync.mockRejectedValue(new Error('offline'));
+
+    await expect(deletePushTokenForCurrentDevice()).resolves.toBeUndefined();
+    expect(mockSupabase.from).not.toHaveBeenCalled();
+    expect(mockLogger.warn).toHaveBeenCalledWith('push token削除中に例外:', 'offline');
   });
 });

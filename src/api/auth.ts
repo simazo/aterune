@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
 import { Platform } from 'react-native';
 import { deletePushTokenForCurrentDevice } from './push-tokens';
@@ -71,7 +72,14 @@ function parseAuthParams(url: string) {
 }
 
 export async function signOut() {
-  // push tokenの削除はログイン中にしか行えないため、signOutより先に実行する
-  await deletePushTokenForCurrentDevice();
+  // push tokenの削除はログイン中にしか行えないため、signOutより先に実行する。
+  // 削除に失敗してもログアウトは必ず行う
+  try {
+    await deletePushTokenForCurrentDevice();
+  } catch (e) {
+    // deletePushTokenForCurrentDeviceは例外を投げない作りのため、現状ここには来ない。
+    // 今後その作りが変わってもログアウトを止めないよう、念のため残している
+    logger.warn('push token削除中に例外:', e instanceof Error ? e.message : e);
+  }
   return supabase.auth.signOut();
 }
