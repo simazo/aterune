@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { supabase } from '@/lib/supabase';
 import { Platform } from 'react-native';
 import { createSessionFromUrl, signInWithEmail, signOut, signUpWithEmail } from './auth';
@@ -18,8 +19,13 @@ jest.mock('./push-tokens', () => ({
   deletePushTokenForCurrentDevice: jest.fn(),
 }));
 
+jest.mock('@/lib/logger', () => ({
+  logger: { debug: jest.fn(), warn: jest.fn() },
+}));
+
 const mockAuth = jest.mocked(supabase.auth);
 const mockDeletePushToken = jest.mocked(deletePushTokenForCurrentDevice);
+const mockLogger = jest.mocked(logger);
 
 afterEach(() => {
   // replacePropertyで差し替えたPlatform.OSを元に戻す
@@ -180,5 +186,14 @@ describe('signOut', () => {
     await signOut();
 
     expect(calls).toEqual(['deletePushToken', 'signOut']);
+  });
+
+  it('push tokenの削除に失敗してもサインアウトし、warnでログを出す', async () => {
+    mockDeletePushToken.mockRejectedValue(new Error('offline'));
+    mockAuth.signOut.mockResolvedValue({ error: null });
+
+    await expect(signOut()).resolves.toEqual({ error: null });
+    expect(mockAuth.signOut).toHaveBeenCalled();
+    expect(mockLogger.warn).toHaveBeenCalledWith('push token削除中に例外:', 'offline');
   });
 });

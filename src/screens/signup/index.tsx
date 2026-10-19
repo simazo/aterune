@@ -7,6 +7,7 @@ import { Link, LinkText } from '@/components/ui/link';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useErrorToast } from '@/hooks/use-error-toast';
+import { getAuthErrorMessage } from '@/utils/auth-error';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -33,7 +34,7 @@ export function Signup() {
     const { error } = await signUpWithEmail(email, password, displayName.trim());
 
     if (error) {
-      showError(error.message);
+      showError(getAuthErrorMessage(error));
     } else {
       // Confirm email必須のため、この時点ではセッションはまだ確立しない
       setSignUpEmailSent(true);
