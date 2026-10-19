@@ -63,6 +63,8 @@ npx supabase test db --db-url "postgresql://postgres.kwjgxjtsyjzajdcaqnpd:<DBパ
 
 環境変数：`EXPO_PUBLIC_SUPABASE_URL` と `EXPO_PUBLIC_SUPABASE_ANON_KEY`（`.env` / `.env.local` に置く。gitignore 済み）。
 
+typed routes の型（`.expo/types/router.d.ts`、gitignore 済み）は `npm start`（expo start）の実行中にだけ更新される。ルートを追加・削除したあとに `npx tsc --noEmit` で URL の型エラーが出たら、`npm start` を起動して再生成する。
+
 文字コードは UTF-8（BOM なし）、改行コードは LF に統一する（開発 PC は Mac と Windows の両方）。改行コードは `.gitattributes` の `eol=lf` で git 側から強制し、VS Code は `.vscode/settings.json` で UTF-8 / LF を指定している。Windows PowerShell 5.1 の `>` は BOM 付きや UTF-16 で書き出すことがあるため、型生成などファイルへのリダイレクトを伴うコマンドは Bash で実行する。
 
 ## アーキテクチャ
