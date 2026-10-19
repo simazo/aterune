@@ -1,3 +1,7 @@
+// gluestack-ui（main）からコピーしたもの。upstream からの変更点：
+// mode が 'system' のとき、Appearance.setColorScheme に 'system' ではなく 'unspecified' を渡すようにした。
+// React Native が受け付けるのは 'light' / 'dark' / 'unspecified' で、'system' を渡すとその文字列が
+// そのまま useColorScheme() の戻り値になり、OS がダークでも 'dark' と判定できなくなるため。
 import React, { useEffect } from 'react';
 import { View, ViewProps , Appearance, ColorSchemeName } from 'react-native';
 import { OverlayProvider } from '@gluestack-ui/core/overlay/creator';
@@ -14,7 +18,7 @@ export function GluestackUIProvider({
   style?: ViewProps['style'];
 }) {
   useEffect(() => {
-    Appearance.setColorScheme(mode as ColorSchemeName);
+    Appearance.setColorScheme((mode === 'system' ? 'unspecified' : mode) as ColorSchemeName);
   }, [mode]);
 
   return (
