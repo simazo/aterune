@@ -113,6 +113,7 @@ supabase/
 - **コンポーネント**：React Native のコア部品ではなく gluestack-ui のコンポーネントを使う。仮実装でも同じ。
 - **`components/ui/` は書き換えない**：独自の見た目・挙動を加えてアプリ全体で揃えたいものは、`src/components/` で包んだ共通コンポーネントを作る。
   - 例外：型チェックが通らないなど、コピーしたままでは使えない場合だけは最小限に直し、ファイル冒頭のコメントに変更点と理由を書く（例：`avatar`、`badge`、`spinner`）。見た目・挙動は変えない。
+- **背景が透明な部品**：gluestack はライトの画面背景を白と想定しているが、このアプリのライトの背景は色付き（`--background`）。画面の上に直接置く部品で、ライトの背景が透明または `bg-background` のもの（Input、Select、Button の outline など）は背景に溶け込むため、`src/components/` の共通部品で `bg-card` を付けて使う（例：`FilledInput`、`SelectableButton`）。まだ包んでいない部品は、初めて使うときに作る。
 - **コンポーネントの追加**：`components/ui/` に無いものを使うときは、依存パッケージの追加を伴うことがあるため、事前に承認を得てから追加する。
 
 #### React Native → gluestack-ui 対応表
