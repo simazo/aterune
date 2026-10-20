@@ -1,5 +1,9 @@
 import { logger } from '@/lib/logger';
-import { getCurrentPlatform, registerForPushNotificationsAsync } from '@/lib/push-notifications';
+import {
+  getCurrentPlatform,
+  getPushTokenIfPermittedAsync,
+  registerForPushNotificationsAsync,
+} from '@/lib/push-notifications';
 import { supabase } from '@/lib/supabase';
 
 // ログイン中のユーザーにpush tokenを紐付けて保存する（ログイン直後・メール確認からの自動ログイン直後に呼ぶ）
@@ -34,7 +38,8 @@ export async function savePushTokenForCurrentUser() {
 // オフラインなどで失敗してもログアウトの流れを止めないよう、例外は投げない
 export async function deletePushTokenForCurrentDevice() {
   try {
-    const token = await registerForPushNotificationsAsync();
+    // 許可を求める関数を使うと、ログアウト時に許可ダイアログが出てしまう
+    const token = await getPushTokenIfPermittedAsync();
     if (!token) return;
 
     const { error } = await supabase.from('push_tokens').delete().eq('expo_push_token', token);

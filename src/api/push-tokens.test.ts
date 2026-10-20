@@ -1,10 +1,15 @@
 import { logger } from '@/lib/logger';
-import { getCurrentPlatform, registerForPushNotificationsAsync } from '@/lib/push-notifications';
+import {
+  getCurrentPlatform,
+  getPushTokenIfPermittedAsync,
+  registerForPushNotificationsAsync,
+} from '@/lib/push-notifications';
 import { supabase } from '@/lib/supabase';
 import { deletePushTokenForCurrentDevice, savePushTokenForCurrentUser } from './push-tokens';
 
 jest.mock('@/lib/push-notifications', () => ({
   registerForPushNotificationsAsync: jest.fn(),
+  getPushTokenIfPermittedAsync: jest.fn(),
   getCurrentPlatform: jest.fn(),
 }));
 
@@ -21,6 +26,7 @@ jest.mock('@/lib/logger', () => ({
 
 const TOKEN = 'ExponentPushToken[test]';
 const mockRegisterForPushNotificationsAsync = jest.mocked(registerForPushNotificationsAsync);
+const mockGetPushTokenIfPermittedAsync = jest.mocked(getPushTokenIfPermittedAsync);
 const mockGetCurrentPlatform = jest.mocked(getCurrentPlatform);
 const mockSupabase = jest.mocked(supabase);
 const mockLogger = jest.mocked(logger);
@@ -28,6 +34,7 @@ const mockLogger = jest.mocked(logger);
 beforeEach(() => {
   jest.clearAllMocks();
   mockRegisterForPushNotificationsAsync.mockResolvedValue(TOKEN);
+  mockGetPushTokenIfPermittedAsync.mockResolvedValue(TOKEN);
   mockGetCurrentPlatform.mockReturnValue('ios');
 });
 
@@ -93,6 +100,16 @@ describe('deletePushTokenForCurrentDevice', () => {
     expect(eq).toHaveBeenCalledWith('expo_push_token', TOKEN);
   });
 
+  it('通知の許可を求める関数は呼ばない', async () => {
+    const eq = jest.fn().mockResolvedValue({ error: null });
+    const del = jest.fn().mockReturnValue({ eq });
+    mockSupabase.from.mockReturnValue({ delete: del } as never);
+
+    await deletePushTokenForCurrentDevice();
+
+    expect(mockRegisterForPushNotificationsAsync).not.toHaveBeenCalled();
+  });
+
   it('deleteが失敗しても例外を投げずに終わり、warnでログを出す', async () => {
     const eq = jest.fn().mockResolvedValue({ error: { message: 'delete failed' } });
     const del = jest.fn().mockReturnValue({ eq });
@@ -104,7 +121,7 @@ describe('deletePushTokenForCurrentDevice', () => {
   });
 
   it('tokenが取れなければ何もしない', async () => {
-    mockRegisterForPushNotificationsAsync.mockResolvedValue(null);
+    mockGetPushTokenIfPermittedAsync.mockResolvedValue(null);
 
     await deletePushTokenForCurrentDevice();
 
@@ -112,7 +129,7 @@ describe('deletePushTokenForCurrentDevice', () => {
   });
 
   it('tokenの取得で例外が出ても例外を投げずに終わり、warnでログを出す', async () => {
-    mockRegisterForPushNotificationsAsync.mockRejectedValue(new Error('offline'));
+    mockGetPushTokenIfPermittedAsync.mockRejectedValue(new Error('offline'));
 
     await expect(deletePushTokenForCurrentDevice()).resolves.toBeUndefined();
     expect(mockSupabase.from).not.toHaveBeenCalled();

@@ -1,7 +1,11 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { getCurrentPlatform, registerForPushNotificationsAsync } from './push-notifications';
+import {
+  getCurrentPlatform,
+  getPushTokenIfPermittedAsync,
+  registerForPushNotificationsAsync,
+} from './push-notifications';
 
 jest.mock('expo-notifications', () => ({
   AndroidImportance: { DEFAULT: 3 },
@@ -70,6 +74,37 @@ describe('registerForPushNotificationsAsync', () => {
     jest.replaceProperty(Device, 'isDevice', false);
 
     await expect(registerForPushNotificationsAsync()).resolves.toBeNull();
+    expect(mockNotifications.getPermissionsAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe('getPushTokenIfPermittedAsync', () => {
+  it('通知が許可されていればExpo Push Tokenを返す', async () => {
+    await expect(getPushTokenIfPermittedAsync()).resolves.toBe(TOKEN);
+    expect(mockNotifications.getExpoPushTokenAsync).toHaveBeenCalledWith({
+      projectId: 'test-project-id',
+    });
+  });
+
+  it('未許可なら許可を求めずにnullを返す', async () => {
+    mockNotifications.getPermissionsAsync.mockResolvedValue({ status: 'denied' } as never);
+
+    await expect(getPushTokenIfPermittedAsync()).resolves.toBeNull();
+    expect(mockNotifications.requestPermissionsAsync).not.toHaveBeenCalled();
+    expect(mockNotifications.getExpoPushTokenAsync).not.toHaveBeenCalled();
+  });
+
+  it('Web版では許可を確認せずnullを返す', async () => {
+    jest.replaceProperty(Platform, 'OS', 'web');
+
+    await expect(getPushTokenIfPermittedAsync()).resolves.toBeNull();
+    expect(mockNotifications.getPermissionsAsync).not.toHaveBeenCalled();
+  });
+
+  it('実機でなければ許可を確認せずnullを返す', async () => {
+    jest.replaceProperty(Device, 'isDevice', false);
+
+    await expect(getPushTokenIfPermittedAsync()).resolves.toBeNull();
     expect(mockNotifications.getPermissionsAsync).not.toHaveBeenCalled();
   });
 });
