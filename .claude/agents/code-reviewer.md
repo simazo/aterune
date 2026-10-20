@@ -19,7 +19,7 @@ model: sonnet
 
 ## 観点
 - **正しさ**：仕様・Issue の要件を満たしているか。エラー・例外・境界値（null、空、オフライン、二重実行など）の扱い。
-- **CLAUDE.md の規約**
+- **CLAUDE.md と `.claude/rules/`（`ui.md`・`database.md`・`testing.md`）の規約**：変更した分野の rules のファイルを読んでから確かめる。
   - 画面・フックが `supabase` を直接呼ばず `api/` を使っているか。`lib/` の役割を越えていないか。
   - UI は gluestack-ui のコンポーネントと `className` を使っているか。`components/ui/` を書き換えていないか。
   - ログは `logger` を使い、成功時に出していないか。token・メールアドレスなどの個人情報を出していないか。
