@@ -31,7 +31,11 @@ create table public.sessions (
         or (consultant_id = recipient_id and teller_id = applicant_id)),
   constraint sessions_initiated_by_role_match_check
     check ((initiated_by = 'consultant' and applicant_id = consultant_id)
-        or (initiated_by = 'teller'     and applicant_id = teller_id))
+        or (initiated_by = 'teller'     and applicant_id = teller_id)),
+  constraint sessions_concern_length_check
+    check (char_length(concern) <= 1000),
+  constraint sessions_applicant_message_length_check
+    check (char_length(applicant_message) <= 100)
 );
 
 comment on table  public.sessions                   is '相談者と占い師のやり取りの単位';
@@ -43,9 +47,9 @@ comment on column public.sessions.teller_id         is '占い師側のユーザ
 comment on column public.sessions.initiated_by      is '申込みの起点(consultant=相談者から、teller=占い師から(掲示板投稿への応募))';
 comment on column public.sessions.status            is 'pending=承認待ち / active=進行中 / completed=相談者の完了操作 / auto_completed=相談者側の無操作による自動完了 / rejected=拒否 / expired=申込みの期限切れ';
 comment on column public.sessions.category          is '相談カテゴリ(掲示板経由の場合は投稿からコピー)';
-comment on column public.sessions.concern           is '悩みの内容(掲示板経由の場合は投稿からコピー)';
+comment on column public.sessions.concern           is '悩みの内容(掲示板経由の場合は投稿からコピー。1000文字まで)';
 comment on column public.sessions.post_id           is '掲示板経由の場合の投稿ID。ストア経由はNULL。投稿削除時はNULL';
-comment on column public.sessions.applicant_message is '申込み時のひとこと(任意)';
+comment on column public.sessions.applicant_message is '申込み時のひとこと(任意。100文字まで)';
 comment on column public.sessions.completed_at      is '完了日時(completed / auto_completed への遷移時にトリガーが設定)';
 comment on column public.sessions.last_activity_at  is '相談者側の最終操作日時(自動完了の判定に使用。messages 作成時のトリガーで更新)';
 comment on column public.sessions.expires_at        is 'pending の有効期限(作成から48時間)';
@@ -95,6 +99,64 @@ begin
 
   if tg_op = 'INSERT' and v_status = 'closed' then
     raise exception 'cannot apply to a closed post';
+  end if;
+
+  return new;
+end;
+$$;
+
+-- 申込みのルール:
+--   ・相談者からの申込みは、受付停止中の占い師にはできない
+--   ・相談者からの申込みは、生年月日必須の占い師には、生年月日を登録済みの相談者だけができる
+--   ・申込みの向きに関わらず、同じ相談者と占い師の間に、期限内の pending か active があれば作れない
+--     (期限切れの pending は、定期処理で expired になる前でも数えない。システムからの登録も弾く)
+-- 利用者は status を指定できないので、利用者の申込みは常に pending として確かめる。
+-- システムが終了済みの行(completed など)を直接作る場合は申込みではないので確かめない
+-- 当事者は RLS で自分の生年月日と、相手とのセッションを読めるので、security definer は付けない
+create function public.check_session_request()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+declare
+  v_is_accepting       boolean;
+  v_requires_birthdate boolean;
+begin
+  if not (new.status = 'active' or (new.status = 'pending' and new.expires_at > now())) then
+    return new;
+  end if;
+
+  if new.initiated_by = 'consultant' then
+    select is_accepting, requires_birthdate into v_is_accepting, v_requires_birthdate
+      from public.teller_profiles
+     where profile_id = new.teller_id;
+
+    -- 存在しない teller_id は外部キーが弾く
+    if found then
+      if not v_is_accepting then
+        raise exception 'the teller is not accepting session requests';
+      end if;
+
+      if v_requires_birthdate and not exists (
+        select 1 from public.profile_private_details
+         where profile_id = new.consultant_id
+           and birthdate is not null
+      ) then
+        raise exception 'the teller requires the consultant''s birthdate';
+      end if;
+    end if;
+  end if;
+
+  -- 同じ組み合わせへの同時の申込みがすり抜けないよう、組み合わせごとに順番に処理する
+  perform pg_advisory_xact_lock(hashtextextended(new.consultant_id::text || ':' || new.teller_id::text, 0));
+
+  if exists (
+    select 1 from public.sessions
+     where consultant_id = new.consultant_id
+       and teller_id = new.teller_id
+       and (status = 'active' or (status = 'pending' and expires_at > now()))
+  ) then
+    raise exception 'an open session already exists between the consultant and the teller';
   end if;
 
   return new;
@@ -235,6 +297,7 @@ $$;
 
 -- トリガー専用関数: Supabase が anon / authenticated に自動付与する権限も外す
 revoke all on function public.check_session_post()           from public, anon, authenticated;
+revoke all on function public.check_session_request()        from public, anon, authenticated;
 revoke all on function public.copy_post_content_to_session() from public, anon, authenticated;
 revoke all on function public.guard_session_status_change()  from public, anon, authenticated;
 revoke all on function public.sync_post_status()             from public, anon, authenticated;
@@ -246,6 +309,11 @@ revoke all on function public.update_teller_session_count()  from public, anon, 
 create trigger sessions_check_post
   before insert or update of post_id, consultant_id, initiated_by on public.sessions
   for each row execute function public.check_session_post();
+
+-- BEFORE トリガーは名前順に動くため、掲示板経由の整合性(sessions_check_post)の後に確かめる
+create trigger sessions_check_request
+  before insert on public.sessions
+  for each row execute function public.check_session_request();
 
 create trigger sessions_copy_post_content
   before insert on public.sessions
