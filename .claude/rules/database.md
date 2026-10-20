@@ -28,7 +28,7 @@ npx supabase test db --db-url "postgresql://postgres.kwjgxjtsyjzajdcaqnpd:<DBパ
 - トリガー：`<table>_<purpose>`（例：共通関数 `set_updated_at()` を使う `sessions_set_updated_at`）。例外として `auth.users` の `on_auth_user_created` は Supabase 公式の慣習名のまま使う。
 - ポリシー：`<table>_<action>_<scope>`（例：`sessions_select_own`、`tags_select_public`）。
 - インデックス：`<table>_<column>_idx`（例：`sessions_teller_id_idx`）。
-- 制約：Postgres の自動命名に合わせて種類ごとの接尾辞を付ける。CHECK は `<table>_<内容>_check`、UNIQUE は `_key`、外部キーは `_fkey`（例：`sessions_status_check`、`push_tokens_user_id_expo_push_token_key`）。
+- 制約：Postgres の自動命名に合わせて種類ごとの接尾辞を付ける。CHECK は `<table>_<内容>_check`、UNIQUE は `_key`、外部キーは `_fkey`（例：`sessions_status_check`、`push_tokens_expo_push_token_key`）。
 - PL/pgSQL のローカル変数は `v_` で始める（例：`v_status`）。
 - マイグレーション：`<timestamp>_<動詞>_<対象>.sql`（例：`create_sessions`）。`npx supabase migration new <動詞>_<対象>` で作る。
 

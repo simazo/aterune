@@ -15,8 +15,8 @@ jest.mock('@/lib/push-notifications', () => ({
 
 jest.mock('@/lib/supabase', () => ({
   supabase: {
-    auth: { getUser: jest.fn() },
     from: jest.fn(),
+    rpc: jest.fn(),
   },
 }));
 
@@ -39,18 +39,15 @@ beforeEach(() => {
 });
 
 describe('savePushTokenForCurrentUser', () => {
-  it('ログイン中のユーザーIDとtokenをpush_tokensにupsertする', async () => {
-    const upsert = jest.fn().mockResolvedValue({ error: null });
-    mockSupabase.from.mockReturnValue({ upsert } as never);
-    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } } as never);
+  it('tokenとplatformを渡してregister_push_tokenを呼ぶ', async () => {
+    mockSupabase.rpc.mockResolvedValue({ error: null } as never);
 
     await savePushTokenForCurrentUser();
 
-    expect(mockSupabase.from).toHaveBeenCalledWith('push_tokens');
-    expect(upsert).toHaveBeenCalledWith(
-      { user_id: 'user-1', expo_push_token: TOKEN, platform: 'ios' },
-      { onConflict: 'user_id,expo_push_token', ignoreDuplicates: true }
-    );
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('register_push_token', {
+      p_token: TOKEN,
+      p_platform: 'ios',
+    });
   });
 
   it('tokenが取れなければ保存しない', async () => {
@@ -58,32 +55,22 @@ describe('savePushTokenForCurrentUser', () => {
 
     await savePushTokenForCurrentUser();
 
-    expect(mockSupabase.from).not.toHaveBeenCalled();
+    expect(mockSupabase.rpc).not.toHaveBeenCalled();
   });
 
-  it('ログイン中のユーザーがいなければ保存しない', async () => {
-    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } } as never);
-
-    await savePushTokenForCurrentUser();
-
-    expect(mockSupabase.from).not.toHaveBeenCalled();
-  });
-
-  it('upsertが失敗しても例外を投げずに終わり、warnでログを出す', async () => {
-    const upsert = jest.fn().mockResolvedValue({ error: { message: 'upsert failed' } });
-    mockSupabase.from.mockReturnValue({ upsert } as never);
-    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } } as never);
+  it('register_push_tokenが失敗しても例外を投げずに終わり、warnでログを出す', async () => {
+    mockSupabase.rpc.mockResolvedValue({ error: { message: 'rpc failed' } } as never);
 
     await expect(savePushTokenForCurrentUser()).resolves.toBeUndefined();
-    expect(upsert).toHaveBeenCalled();
-    expect(mockLogger.warn).toHaveBeenCalledWith('push_tokens登録エラー:', 'upsert failed');
+    expect(mockSupabase.rpc).toHaveBeenCalled();
+    expect(mockLogger.warn).toHaveBeenCalledWith('push_tokens登録エラー:', 'rpc failed');
   });
 
   it('tokenの取得で例外が出ても例外を投げずに終わり、warnでログを出す', async () => {
     mockRegisterForPushNotificationsAsync.mockRejectedValue(new Error('offline'));
 
     await expect(savePushTokenForCurrentUser()).resolves.toBeUndefined();
-    expect(mockSupabase.from).not.toHaveBeenCalled();
+    expect(mockSupabase.rpc).not.toHaveBeenCalled();
     expect(mockLogger.warn).toHaveBeenCalledWith('push token登録中に例外:', 'offline');
   });
 });
