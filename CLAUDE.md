@@ -53,11 +53,9 @@ npx supabase db reset          # マイグレーションと seed を再適用
 npx supabase test db           # supabase/tests/database/ の pgTAP テスト
 npx supabase migration new <name>
 npx supabase gen types typescript --local > src/types/database.types.ts
-npx supabase db push           # 未適用のマイグレーションをリモートへ適用
-npx supabase db reset --linked # リモートを全消去して全マイグレーションを再適用（開発段階のみ）
-# リモートで pgTAP テスト（--linked は不可。パスワードはダッシュボードの Database 設定を参照）
-npx supabase test db --db-url "postgresql://postgres.kwjgxjtsyjzajdcaqnpd:<DBパスワード>@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres"
 ```
+
+リモートへのコマンド（`db push`・`db reset --linked`・リモートでの pgTAP テスト）は `.claude/rules/database.md` を参照。
 
 `.npmrc` で `legacy-peer-deps=true` を設定しており、インストールはこれが前提（NativeWind v5 preview / gluestack v5 alpha の peer 範囲のため）。
 
@@ -105,47 +103,9 @@ supabase/
 - **メール確認フロー**：Supabase クライアントは `detectSessionInUrl: false` なので、`src/api/auth.ts` の `createSessionFromUrl` が URL のフラグメント／クエリからトークンを自前で読み取り、`setSession` を呼ぶ。戻り先はモバイルが `aterune://auth/confirmed`、Web が `${window.location.origin}/auth/confirmed`（各オリジンを Supabase の Redirect URLs 許可リストに登録する必要がある）。
 - **Push token**（端末からの取得は `src/lib/push-notifications.ts`、DB への保存・削除は `src/api/push-tokens.ts`）：ログイン後／メール確認からの自動ログイン後に `push_tokens` へ保存する。RLS 上ログイン中しか削除できないため、`signOut()` では `supabase.auth.signOut()` を呼ぶ*前に*削除する。Web とシミュレータでは早期リターンする。
 - **Supabase クライアント**（`src/lib/supabase.ts`）：`window` が無い環境（静的 Web の事前レンダリング）ではストレージとトークン自動更新を無効にしている。
-- **UI**：「UI（gluestack-ui / NativeWind）」節を参照。フォームは react-hook-form + `zodResolver`、エラーは `useErrorToast` で表示する。
+- **UI**：`.claude/rules/ui.md` を参照。フォームは react-hook-form + `zodResolver`、エラーは `useErrorToast` で表示する。
 - **型**：`src/types/database.types.ts` は自動生成なので手で編集しない。`src/types/index.ts` で `Tables<'...'>` を使った行の型エイリアス（`Profile`、`Session` など）を公開している。
 - パスエイリアス `@/` → `src/`（`tsconfig.json` と `babel.config.js` の両方で設定）。
-
-### UI（gluestack-ui / NativeWind）
-- gluestack-ui v5 のコンポーネントを `src/components/ui/` にコピーして使う（一部に `.web.tsx` の Web 版あり）。スタイルは NativeWind v5 / Tailwind v4（`global.css`、`metro.config.js`）。
-- **スタイル**：NativeWind の `className` で書く。`style={{}}` は動的な値（アニメーションの値など）を除いて使わない。
-- **コンポーネント**：React Native のコア部品ではなく gluestack-ui のコンポーネントを使う。仮実装でも同じ。
-- **`components/ui/` は書き換えない**：独自の見た目・挙動を加えてアプリ全体で揃えたいものは、`src/components/` で包んだ共通コンポーネントを作る。
-  - 例外：型チェックが通らないなど、コピーしたままでは使えない場合だけは最小限に直し、ファイル冒頭のコメントに変更点と理由を書く（例：`avatar`、`badge`、`spinner`）。見た目・挙動は変えない。
-- **背景が透明な部品**：gluestack はライトの画面背景を白と想定しているが、このアプリのライトの背景は色付き（`--background`）。画面の上に直接置く部品で、ライトの背景が透明または `bg-background` のもの（Input、Select、Button の outline など）は背景に溶け込むため、`src/components/` の共通部品で `bg-card` を付けて使う（例：`FilledInput`、`SelectableButton`）。まだ包んでいない部品は、初めて使うときに作る。
-- **コンポーネントの追加**：`components/ui/` に無いものを使うときは、依存パッケージの追加を伴うことがあるため、事前に承認を得てから追加する。
-
-#### React Native → gluestack-ui 対応表
-- **機械的に決まるもの**：TextInput → Input + InputField、Button（ボタン用途）→ Button + ButtonText、ActivityIndicator → Spinner、Image → Image、Switch → Switch、ScrollView → ScrollView、チェックボックス → Checkbox、ラジオボタン → Radio、セレクトボックス → Select、モーダル → Modal、下からせり上がるメニュー → Actionsheet、ツールチップ → Tooltip、アバター画像 → Avatar、バッジ・タグ → Badge、カード → Card、リンクテキスト → Link。
-- **View → Box / VStack / HStack / Center**：並べ方の役割で選ぶ。縦並び＝VStack、横並び＝HStack、中央寄せ＝Center、並べ方にこだわらない箱＝Box。グリッド状に並べるなら Grid、区切り線なら Divider。
-- **TouchableOpacity → Button / Pressable**：明確なアクション（サインイン・送信・確定など）は Button。カードをタップして詳細へ遷移するなど、ボタンではないタップ領域は Pressable。
-- **Text → Text / Heading**：フォントサイズではなく役割で選ぶ。画面タイトル・セクション見出しは Heading、それ以外（本文・ラベル・キャプションなど）は Text。
-- **メッセージ表示 → FormControlError / Toast / AlertDialog**：入力欄のバリデーションエラーは FormControl + FormControlError。自動で消える確認不要の通知（保存完了・通信エラーなど）は Toast（`useErrorToast`）。ユーザーの選択・確認が必要なもの（削除確認・ログアウト確認など）は AlertDialog。
-
-#### 仮実装
-- 仮実装の箇所には `// TODO: 仮実装` に続けて、何が仮なのか・本実装で何をすべきかを一言添える。
-  ```ts
-  // TODO: 仮実装。バックエンド動作確認のため最低限の表示のみ。
-  // 本実装時はデザイン方針確定後に gluestack-ui コンポーネントで作り直す
-  ```
-- 既存の例外：`src/components/animated-icon.tsx`（`.web.tsx`・`.module.css`）は Expo テンプレートのままの仮実装で、`StyleSheet` とコア部品を使っている。書き直しは issue #2 で管理する。
-
-### コンポーネントの切り出し
-責務の単位で切り出す。切り出す動機は次の3つ。
-1. **再利用**：複数の画面で同じ見た目・機能が出てくる。
-2. **可読性**：1ファイルにロジックと見た目が詰め込まれて読みづらい。
-3. **責務の分離**：性質の異なるロジックが混在している。
-
-線引きと置き場所：
-- ある画面にしか出てこない単純な表示部品 → 切り出さず画面ファイル内に書く。
-- 1画面内でまとまりが大きいもの（フォーム部分、ボタン群など）→ 画面専用のサブコンポーネントとして `screens/<name>/components/` に分ける（共通化はしない）。
-- 2画面以上で使うもの（エラー表示、ローディング表示など）→ `src/components/` に共通コンポーネントとして置く。
-- gluestack-ui に独自の見た目・挙動を加えてアプリ全体で揃えたいもの → `src/components/` に共通コンポーネントとして置く。
-
-行数の目安は決めず、都度判断する。実装中に分割した方が良いと判断したら、方針として提案し、承認を得てから分割する。
 
 ### 状態管理
 - **Context にするもの**：互いに無関係な画面同士が同じデータを必要とする場合だけ。現状は認証情報（ログイン中のユーザー・ログイン状態）のみで、単一の `AuthContext`（`AuthProvider` / `useAuth()`）で管理する。
@@ -156,13 +116,6 @@ supabase/
 - 成功時のログは出さない。想定内の早期リターン（Web・シミュレータなど）でもログを出さない。
 - 失敗を呼び出し元に返せない（握りつぶす）場合だけ `logger.warn` で出す。
 - token・メールアドレスなどの個人情報はログに出さない。
-
-### データベース（`supabase/`）
-- スキーマはすべてマイグレーションで管理する（1マイグレーションにつき1テーブル／1機能）。業務ルールはクライアントではなく Postgres の RLS ポリシーとトリガーで守る。例：`sessions` の status 遷移は `guard_session_status_change` がガードする（pending→active/rejected は申込まれた側のみ、completed は相談者のみ、expired/auto_completed はシステム＝`auth.uid()` が null の場合のみ）。
-- **開発段階中のスキーマ変更**：既存のテーブル・関数などを直すときは、変更用のマイグレーション（`alter …` / `rename …`）を追加せず、元のマイグレーションを直接修正する。適用済みのマイグレーションは `db push` で再適用されないため、リモートは `npx supabase db reset --linked` で全消去して全マイグレーションを再適用する（データは消えてよい前提。リモートへの操作はユーザーが行う）。本番運用を始めたらこの方針は廃止し、変更用のマイグレーションを追加する。
-- 役割はセッションごとに決まり、同じユーザーが相談者にも占い師にもなれる（`profiles.is_teller` は `teller_profiles` からトリガーで同期）。セッションの起点は、相談者からの申込みか、占い師による `consultation_posts`（掲示板投稿）への応募のどちらか（`initiated_by`）。
-- `notifications` の行は `sessions` のトリガーで作られる。外部へのプッシュ送信は Vault + `pg_net` で作る予定（拡張は有効化済み）。
-- 規約：トリガー関数には `set search_path = ''` を付ける。`security definer` は他テーブルへの書き込みなど RLS を越える必要がある場合のみ付ける（`guard_session_status_change` のように呼び出し元の権限で動けばよいガード用トリガーには付けない）。どちらの場合もオブジェクト名はスキーマ修飾して書く。テーブルとカラムには日本語の `comment on` を付ける。
 
 ### 命名規則
 
@@ -180,52 +133,6 @@ supabase/
 - 定数（モジュール直下の固定値）：UPPER_SNAKE_CASE（例：`MOBILE_AUTH_REDIRECT_URL`）。
 - zod スキーマは `<name>Schema`、推論した型は `<Name>FormValues`（例：`loginSchema` / `LoginFormValues`）。
 - テーブル行の型エイリアスはテーブル名を単数形の PascalCase にする（例：`push_tokens` → `PushToken`）。
-
-#### データベース
-- 識別子はすべて snake_case で、引用符で囲まない（ポリシー名も含む）。
-- テーブル：複数形（例：`sessions`、`teller_profiles`）。
-- カラム：外部キーは `<名詞>_id`、日時は `<動詞の過去分詞>_at`（例：`created_at`、`expires_at`）、真偽値は `is_*` / `requires_*`。
-- 関数：`<動詞>_<目的語>`（例：`sync_is_teller`、`notify_session_status_change`）。
-- トリガー：`<table>_<purpose>`（例：共通関数 `set_updated_at()` を使う `sessions_set_updated_at`）。例外として `auth.users` の `on_auth_user_created` は Supabase 公式の慣習名のまま使う。
-- ポリシー：`<table>_<action>_<scope>`（例：`sessions_select_own`、`tags_select_public`）。
-- インデックス：`<table>_<column>_idx`（例：`sessions_teller_id_idx`）。
-- 制約：Postgres の自動命名に合わせて種類ごとの接尾辞を付ける。CHECK は `<table>_<内容>_check`、UNIQUE は `_key`、外部キーは `_fkey`（例：`sessions_status_check`、`push_tokens_user_id_expo_push_token_key`）。
-- PL/pgSQL のローカル変数は `v_` で始める（例：`v_status`）。
-- マイグレーション：`<timestamp>_<動詞>_<対象>.sql`（例：`create_sessions`）。`npx supabase migration new <動詞>_<対象>` で作る。
-
-### テスト
-何をどこまでテストするかは「作業の進め方 › テストファースト」に従う。この節は書き方と置き場所の規約。
-
-#### ツール・環境
-- Jest（`jest-expo`）＋ React Native Testing Library v14。ルーティングのテストは `expo-router/testing-library` の `renderRouter` を使う。
-- `babel.config.js`：`nativewind/babel` が `@react-native/jest-preset` の RN モックまで書き換えると循環 import で落ちるため、そのファイルだけ対象から外している。アプリ実行時の挙動は変わらない。
-- `package.json` の `jest.transformIgnorePatterns` は未設定。gluestack-ui を使う画面をテストすると `@gluestack-ui/core` の ESM が変換されず SyntaxError になるため、その前に jest-expo の初期値の許可リストへ `@gluestack-ui` を加える必要がある。ESM で配布されるライブラリで「Unexpected token 'export'」が出たら同様に追加する。
-
-#### 配置
-- **基本**：テストは対象と同じフォルダに `<対象>.test.ts(x)` で置く（例：`src/api/auth.test.ts`、`src/screens/<name>/schema.test.ts`、1画面のテストなら `src/screens/<name>/index.test.tsx`）。
-- **例外（`src/app/`）**：`src/app/` 配下はすべてルートとして扱われるため、ルート・レイアウトなど複数画面にまたがるテストは `src/__tests__/` に置く（例：`src/__tests__/layouts.test.tsx`）。
-- **共通モジュール**：テスト用の共通処理（独自の render、モックの準備など）は `src/test-utils/` に置く。`__tests__/` 内のファイルは名前に関係なく jest がテストとして実行するため、そこには置かない。
-- **全体設定・手動モック**：全テスト共通の設定はルートの `jest.setup.ts`（未作成。作るときは `setupFilesAfterEnv` に登録）、モジュール丸ごとの手動モックは jest の規約どおり `__mocks__/` に置く。
-
-#### テストで確かめるもの・手動で確かめるもの
-- **テスト**：入力チェックのルールとエラー文言、Supabase（`api/`）の呼び出しの値・順番、画面遷移と認証状態によるリダイレクト、DB の業務ルール（pgTAP）。
-- **手動**：メール送信など外部サービスとのやり取り、ディープリンク・プッシュ通知など端末固有の挙動（実機）、見た目・レイアウト（Web は Playwright、または実機）。
-
-#### モック
-- **1つ下の層をモックする**：画面のテストでは `api/`・`lib/` の関数やフックを、`api/`・`lib/` のテストでは Supabase クライアント（`@/lib/supabase`、同じフォルダからなら `./supabase`）を `jest.mock` でモックする。
-- 画面のテストでは `expo-router`（`useRouter`）と `useErrorToast` もモックし、「どこへ移動しようとしたか」「どのメッセージを出そうとしたか」を確かめる。
-- `Platform.OS` は `jest.replaceProperty` で差し替える。
-
-#### 書き方
-- テスト名は日本語で「〇〇なら△△する」の形にし、何を保証しているかが分かるように書く。
-- 不具合を直すときは、先にその不具合で失敗するテストを書き、失敗を確認してから修正する。
-- RNTL v14 では `render` / `renderHook` / `fireEvent` が非同期なので、必ず `await` を付ける。
-- `renderRouter` の `getPathname()` は戻り値の Promise に付いている（`const r = renderRouter(...); await r; r.getPathname()`）。`toHavePathname` は型定義が無く tsc で落ちるので使わない。
-- `jest.mock` の factory 内で参照する変数は、名前を `mock` で始める（jest の制約）。
-
-#### DB（pgTAP）
-- マイグレーションごとに対応する pgTAP テスト `supabase/tests/database/<table>.test.sql` を用意する（`begin; … rollback;` で囲み、`auth.users` にテストデータを入れ、ロールを切り替えて RLS を検証する）。リモートで実行するときは `--linked` ではなく `--db-url` で `postgres` ロールとして接続する（「コマンド」節参照）。`--linked` は CLI の一時ロール `cli_login_postgres` で接続し、このロールには pgTAP が入る `extensions` スキーマの使用権限が無く、`reset role` でもこのロールに戻るため、テストが動かない。
-
 
 ## 作業の進め方
 
