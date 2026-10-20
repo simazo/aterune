@@ -37,7 +37,11 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     return null;
   }
 
-  // Expo Push Token取得
+  return fetchExpoPushToken();
+}
+
+// Expo Push Tokenを取得する（許可の確認は呼び出し側で行う）
+async function fetchExpoPushToken(): Promise<string> {
   const projectId = Constants.expoConfig?.extra?.eas?.projectId;
   const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
 
