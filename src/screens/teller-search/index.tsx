@@ -9,16 +9,10 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useErrorToast } from '@/hooks/use-error-toast';
 import type { TagCategory, TellerSearchResult, TellerSortOrder } from '@/types';
+import { CATEGORY_LABELS } from '@/utils/teller';
 import { useEffect, useState } from 'react';
 import { TagFilterSection, type TagOption } from './components/tag-filter-section';
 import { TellerCard } from './components/teller-card';
-
-// セクションはこのキーの順に並ぶ（search_tellers が返すカードのタグの並びと合わせる）
-const CATEGORY_LABELS: Record<TagCategory, string> = {
-  divination: '占術',
-  concern: '相談内容',
-  style: '回答のスタイル',
-};
 
 const SORT_OPTIONS: { value: TellerSortOrder; label: string }[] = [
   { value: 'newest', label: '新着順' },

@@ -6,25 +6,7 @@ import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import type { TellerSearchResult } from '@/types';
-import { isNewcomer } from '@/utils/teller';
-
-// カード上部の帯の色。占い師ごとに固定の1色を選ぶ（Tailwind が拾えるようクラス名は省略せずに書く）。
-// ダークでは淡い色が浮いてまぶしいため、同じ色味の暗い色を半透明にしてカードの色になじませる
-const ACCENT_CLASSES = [
-  'bg-violet-200 dark:bg-violet-800/40',
-  'bg-pink-200 dark:bg-pink-800/40',
-  'bg-emerald-200 dark:bg-emerald-800/40',
-  'bg-amber-200 dark:bg-amber-800/40',
-  'bg-sky-200 dark:bg-sky-800/40',
-];
-
-function getAccentClass(tellerId: string) {
-  let sum = 0;
-  for (const char of tellerId) {
-    sum += char.charCodeAt(0);
-  }
-  return ACCENT_CLASSES[sum % ACCENT_CLASSES.length];
-}
+import { getAccentClass, isNewcomer } from '@/utils/teller';
 
 // 自己PRはカードでは冒頭だけ見せる（約3行分）。
 // 行数で切る numberOfLines / line-clamp は、Web 版の Text（span）に numberOfLines がそのまま渡って警告になるため、文字数で切る
