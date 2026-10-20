@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import type { TellerSearchResult, TellerSortOrder } from '@/types';
+import type { TellerDetail, TellerSearchResult, TellerSortOrder } from '@/types';
 
 type SearchTellersParams = {
   tagSlugs: string[];
@@ -17,4 +17,14 @@ export async function searchTellers({ tagSlugs, isAcceptingOnly, sort }: SearchT
   });
 
   return { data: data as TellerSearchResult[] | null, error };
+}
+
+// 占い師1人分の詳細を取得する（ログイン中の自分も取得できる）。
+// 占い師でない・存在しない ID なら data は null
+export async function getTeller(tellerId: string) {
+  const { data, error } = await supabase
+    .rpc('get_teller', { p_teller_id: tellerId })
+    .maybeSingle();
+
+  return { data: data as TellerDetail | null, error };
 }

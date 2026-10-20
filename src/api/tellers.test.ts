@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase';
-import { searchTellers } from './tellers';
+import { getTeller, searchTellers } from './tellers';
 
 jest.mock('@/lib/supabase', () => ({
   supabase: { rpc: jest.fn() },
@@ -59,6 +59,48 @@ describe('searchTellers', () => {
     mockSupabase.rpc.mockResolvedValue({ data: null, error } as never);
 
     const result = await searchTellers({ tagSlugs: ['tarot'], isAcceptingOnly: false, sort: 'newest' });
+
+    expect(result).toEqual({ data: null, error });
+  });
+});
+
+describe('getTeller', () => {
+  const TELLER_DETAIL = {
+    ...TELLER,
+    requires_birthdate: true,
+    created_at: '2026-10-01T03:00:00+00:00',
+  };
+
+  // get_teller は 0 行か 1 行を返すので、maybeSingle で 1 件（または null）にする
+  const mockMaybeSingle = jest.fn();
+
+  beforeEach(() => {
+    mockSupabase.rpc.mockReturnValue({ maybeSingle: mockMaybeSingle } as never);
+  });
+
+  it('占い師のIDをget_tellerに渡し、1件を返す', async () => {
+    mockMaybeSingle.mockResolvedValue({ data: TELLER_DETAIL, error: null });
+
+    const result = await getTeller('teller-1');
+
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('get_teller', { p_teller_id: 'teller-1' });
+    expect(mockMaybeSingle).toHaveBeenCalled();
+    expect(result).toEqual({ data: TELLER_DETAIL, error: null });
+  });
+
+  it('占い師が見つからなければ、dataをnullで返す', async () => {
+    mockMaybeSingle.mockResolvedValue({ data: null, error: null });
+
+    const result = await getTeller('no-such-teller');
+
+    expect(result).toEqual({ data: null, error: null });
+  });
+
+  it('呼び出しに失敗したらerrorをそのまま返す', async () => {
+    const error = { message: 'network error' };
+    mockMaybeSingle.mockResolvedValue({ data: null, error });
+
+    const result = await getTeller('teller-1');
 
     expect(result).toEqual({ data: null, error });
   });

@@ -38,3 +38,16 @@ export type TellerSearchResult = Omit<
   average_rating: number | null;
   tags: TellerTag[];
 };
+
+// get_teller の結果（占い師詳細）。上書きの理由は TellerSearchResult と同じ
+type GetTellerRow = Database['public']['Functions']['get_teller']['Returns'][number];
+export type TellerDetail = Omit<
+  GetTellerRow,
+  'avatar_url' | 'self_pr' | 'training_period' | 'average_rating' | 'tags'
+> & {
+  avatar_url: string | null;
+  self_pr: string | null;
+  training_period: string | null;
+  average_rating: number | null;
+  tags: TellerTag[];
+};
