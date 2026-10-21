@@ -95,7 +95,7 @@ export function SessionRequestForm({ teller, consultantId, savedBirthdate }: Pro
             <FormControlLabel>
               <FormControlLabelText>相談内容</FormControlLabelText>
             </FormControlLabel>
-            <FilledTextarea className="h-40">
+            <FilledTextarea className="h-80">
               <TextareaInput
                 placeholder="占ってほしいことや、いまの状況を書いてください"
                 value={value}
