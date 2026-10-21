@@ -1,4 +1,4 @@
-import { UserIcon } from '@/components/icons';
+import { ClipboardListIcon, UserIcon } from '@/components/icons';
 import { Icon, MessageCircleIcon, SearchIcon } from '@/components/ui/icon';
 import { Tabs } from 'expo-router/js-tabs';
 import type { ComponentProps } from 'react';
@@ -14,22 +14,28 @@ function TabIcon({ as, color }: TabIconProps) {
   return <Icon as={as} color={color} size="xl" />;
 }
 
-// TODO: 仮実装。相談者モードのタブのみ。
-// 占い師モードの実装時に掲示板タブを足し、profiles.active_mode に応じて Tabs.Protected で出し分ける
+// タブは全員に同じものを出す。占い師だけの機能（お悩みへの応募など）は、各画面の中で profiles.is_teller を見て出し分ける
 export default function TabsLayout() {
   return (
     <Tabs>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'さがす',
+          title: '占い師を探す',
           tabBarIcon: ({ color }) => <TabIcon as={SearchIcon} color={String(color)} />,
+        }}
+      />
+      <Tabs.Screen
+        name="concerns"
+        options={{
+          title: 'お悩みを探す',
+          tabBarIcon: ({ color }) => <TabIcon as={ClipboardListIcon} color={String(color)} />,
         }}
       />
       <Tabs.Screen
         name="messages"
         options={{
-          title: 'メッセージ',
+          title: 'やり取り',
           tabBarIcon: ({ color }) => <TabIcon as={MessageCircleIcon} color={String(color)} />,
         }}
       />

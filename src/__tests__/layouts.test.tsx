@@ -18,7 +18,7 @@ function setSignedIn(signedIn: boolean) {
 }
 
 // 本物の (app) / (tabs) / (auth) レイアウトに、文言を出すだけの仮の画面を組み合わせる。
-// 画面の文言は、タブのラベル（さがす・メッセージ・マイページ）と重ならないようにする。
+// 画面の文言は、タブのラベル（占い師を探す・お悩みを探す・やり取り・マイページ）と重ならないようにする。
 // getPathname() は renderRouter の戻り値（Promise）に付くため、呼び出し側で戻り値を保持したまま await する。
 // expo-router の toHavePathname は型定義が無いので使わない
 function renderApp(initialUrl: string) {
@@ -27,6 +27,7 @@ function renderApp(initialUrl: string) {
       '(app)/_layout': AppLayout,
       '(app)/(tabs)/_layout': TabsLayout,
       '(app)/(tabs)/index': () => <Text>占い師検索画面</Text>,
+      '(app)/(tabs)/concerns': () => <Text>お悩み一覧画面</Text>,
       '(app)/(tabs)/messages': () => <Text>メッセージ画面</Text>,
       '(app)/(tabs)/mypage': () => <Text>マイページ画面</Text>,
       '(auth)/_layout': AuthLayout,
