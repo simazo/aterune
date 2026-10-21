@@ -1,4 +1,9 @@
 'use client';
+// gluestack-ui からコピーしたもの。upstream からの変更点：
+// styled() に渡す AnimatedView を `as React.ComponentType<any>` にした（select-actionsheet と同じ対策）。
+// reanimated の部品を NativeWind v5 の styled() に渡すと型の計算が深くなりすぎ、tsc が TS2589 の上限に
+// 達するまで計算を続けて、型チェックに数分かかっていたため（以前は @ts-expect-error でエラーだけを隠していた）。
+// styled() の戻り値はもともと any なので型の情報は失われず、実行時の挙動も変わらない。
 import { createToastHook } from '@gluestack-ui/core/toast/creator';
 import type { VariantProps } from '@gluestack-ui/utils/nativewind-utils';
 import { tva, useStyleContext, withStyleContext } from '@gluestack-ui/utils/nativewind-utils';
@@ -9,8 +14,7 @@ import Animated, { SlideInUp } from 'react-native-reanimated';
 const useToast = createToastHook(View);
 const SCOPE = 'TOAST';
 const AnimatedView = Animated.createAnimatedComponent(View);
-// @ts-expect-error TS2589: reanimated + nativewindのstyled()型推論が深すぎるため発生する既知の問題
-const StyledAnimatedView = styled(AnimatedView, { className: 'style' });
+const StyledAnimatedView = styled(AnimatedView as React.ComponentType<any>, { className: 'style' });
 const toastStyle = tva({
   base: 'p-4 m-1 rounded-md gap-1 web:pointer-events-auto border-border',
   variants: {
