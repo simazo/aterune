@@ -20,7 +20,7 @@ comment on table  public.notifications              is '通知(アプリ内通�
 comment on column public.notifications.id           is '通知ID';
 comment on column public.notifications.recipient_id is '通知の受信者ユーザーID';
 comment on column public.notifications.type         is '通知の種類(session_request_received / session_request_approved / session_request_rejected / session_completed / review_request / session_auto_completed)';
-comment on column public.notifications.session_id   is '紐づくセッションID。掲示板経由かどうかは sessions.post_id で判定する';
+comment on column public.notifications.session_id   is '紐づくセッションID。お悩み投稿経由かどうかは sessions.post_id で判定する';
 comment on column public.notifications.is_read      is '既読フラグ。既読日時は持たない';
 comment on column public.notifications.created_at   is '通知作成日時(=発生日時)';
 

@@ -1,7 +1,7 @@
 -- sessions: 相談者と占い師のやり取りの単位(申込み → 承認 → 完了)。
 -- 役割はセッションごとに決まる(占い師同士の相互相談があるため)。
 --   initiated_by = 'consultant': 相談者から申し込む(applicant = consultant)
---   initiated_by = 'teller'    : 占い師から掲示板投稿へ応募する(applicant = teller)
+--   initiated_by = 'teller'    : 占い師からお悩み投稿へ応募する(applicant = teller)
 create table public.sessions (
   id                uuid primary key default gen_random_uuid(),
   applicant_id      uuid not null references auth.users (id) on delete cascade,
@@ -44,11 +44,11 @@ comment on column public.sessions.applicant_id      is '申込んだ側のユー
 comment on column public.sessions.recipient_id      is '申込まれた側のユーザーID';
 comment on column public.sessions.consultant_id     is '相談者側のユーザーID(申込みの方向に関わらず常に相談者)';
 comment on column public.sessions.teller_id         is '占い師側のユーザーID(申込みの方向に関わらず常に占い師)';
-comment on column public.sessions.initiated_by      is '申込みの起点(consultant=相談者から、teller=占い師から(掲示板投稿への応募))';
+comment on column public.sessions.initiated_by      is '申込みの起点(consultant=相談者から、teller=占い師から(お悩み投稿への応募))';
 comment on column public.sessions.status            is 'pending=承認待ち / active=進行中 / completed=相談者の完了操作 / auto_completed=相談者側の無操作による自動完了 / rejected=拒否 / expired=申込みの期限切れ';
-comment on column public.sessions.category          is '相談カテゴリ(掲示板経由の場合は投稿からコピー)';
-comment on column public.sessions.concern           is '悩みの内容(掲示板経由の場合は投稿からコピー。1000文字まで)';
-comment on column public.sessions.post_id           is '掲示板経由の場合の投稿ID。ストア経由はNULL。投稿削除時はNULL';
+comment on column public.sessions.category          is '相談カテゴリ(お悩み投稿経由の場合は投稿からコピー)';
+comment on column public.sessions.concern           is '悩みの内容(お悩み投稿経由の場合は投稿からコピー。1000文字まで)';
+comment on column public.sessions.post_id           is 'お悩み投稿経由の場合の投稿ID。それ以外と投稿削除時はNULL';
 comment on column public.sessions.applicant_message is '申込み時のひとこと(任意。100文字まで)';
 comment on column public.sessions.completed_at      is '完了日時(completed / auto_completed への遷移時にトリガーが設定)';
 comment on column public.sessions.last_activity_at  is '相談者側の最終操作日時(自動完了の判定に使用。messages 作成時のトリガーで更新)';
@@ -67,7 +67,7 @@ create index sessions_last_activity_idx on public.sessions (last_activity_at) wh
 -- トリガー関数
 -- ============================================================
 
--- 掲示板経由の整合性:
+-- お悩み投稿経由の整合性:
 --   ・占い師から投稿者への応募であること
 --   ・相談者側が投稿者本人であること
 --   ・閉じた投稿には新規に応募できないこと
@@ -163,7 +163,7 @@ begin
 end;
 $$;
 
--- 掲示板経由なら、投稿の category / concern をセッションにコピーする
+-- お悩み投稿経由なら、投稿の category / concern をセッションにコピーする
 create function public.copy_post_content_to_session()
 returns trigger
 language plpgsql
@@ -310,7 +310,7 @@ create trigger sessions_check_post
   before insert or update of post_id, consultant_id, initiated_by on public.sessions
   for each row execute function public.check_session_post();
 
--- BEFORE トリガーは名前順に動くため、掲示板経由の整合性(sessions_check_post)の後に確かめる
+-- BEFORE トリガーは名前順に動くため、お悩み投稿経由の整合性(sessions_check_post)の後に確かめる
 create trigger sessions_check_request
   before insert on public.sessions
   for each row execute function public.check_session_request();

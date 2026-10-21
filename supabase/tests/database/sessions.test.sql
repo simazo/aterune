@@ -21,7 +21,7 @@ insert into public.teller_profiles (profile_id) values
   ('00000000-0000-0000-0000-0000000000f6'),
   ('00000000-0000-0000-0000-0000000000f7');
 
--- alice の掲示板投稿(p1=open、p2=closed、p3=open)
+-- alice のお悩み投稿(p1=open、p2=closed、p3=open)
 insert into public.consultation_posts (id, consultant_id, category, concern, status) values
   ('00000000-0000-0000-0000-000000000a01', '00000000-0000-0000-0000-0000000000f1', '恋愛', 'aliceの悩み', 'open'),
   ('00000000-0000-0000-0000-000000000a02', '00000000-0000-0000-0000-0000000000f1', '仕事', '閉じた悩み',   'closed'),
@@ -75,7 +75,7 @@ select is(
   'expires_at の初期値は created_at + 48時間'
 );
 
--- 4. 掲示板経由なら concern が投稿からコピーされる
+-- 4. お悩み投稿経由なら concern が投稿からコピーされる
 select is(
   (select concern from public.sessions where id = '00000000-0000-0000-0000-000000000505'),
   'aliceの悩み',
@@ -397,7 +397,7 @@ select throws_ok(
   '23514', null, '自分自身への申込みは作れない'
 );
 
--- 39. concern は NOT NULL(掲示板経由でない場合)
+-- 39. concern は NOT NULL(お悩み投稿経由でない場合)
 select throws_ok(
   $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by)
      values ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f2',
@@ -501,13 +501,13 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000f8","role":"authenticated"}', true);
 
--- 57. 受付停止中でも、占い師から掲示板投稿へは応募できる(p3 は 44 で open に戻っている)
+-- 57. 受付停止中でも、占い師からお悩み投稿へは応募できる(p3 は 44 で open に戻っている)
 select lives_ok(
   $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, post_id)
      values ('00000000-0000-0000-0000-0000000000f8', '00000000-0000-0000-0000-0000000000f1',
              '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f8', 'teller',
              '00000000-0000-0000-0000-000000000a03') $$,
-  '受付停止中の占い師でも、掲示板投稿へは応募できる'
+  '受付停止中の占い師でも、お悩み投稿へは応募できる'
 );
 reset role;
 
@@ -547,7 +547,7 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000fe","role":"authenticated"}', true);
 
--- 59. 逆向き(占い師から掲示板投稿への応募)でも弾く
+-- 59. 逆向き(占い師からお悩み投稿への応募)でも弾く
 select throws_ok(
   $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, post_id)
      values ('00000000-0000-0000-0000-0000000000fe', '00000000-0000-0000-0000-0000000000fd',

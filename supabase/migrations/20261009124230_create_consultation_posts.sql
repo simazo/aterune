@@ -1,4 +1,4 @@
--- consultation_posts: 相談者が悩みを投稿する掲示板。
+-- consultation_posts: 相談者のお悩み投稿(その一覧がお悩み一覧)。
 -- status: open(募集中)/ in_progress(対応中。sessions のトリガーが設定)/ closed(本人が閉じた)
 create table public.consultation_posts (
   id            uuid primary key default gen_random_uuid(),
@@ -11,7 +11,7 @@ create table public.consultation_posts (
   updated_at    timestamptz not null default now()
 );
 
-comment on table  public.consultation_posts               is '相談者の悩み投稿(掲示板)';
+comment on table  public.consultation_posts               is '相談者のお悩み投稿';
 comment on column public.consultation_posts.id            is '投稿ID';
 comment on column public.consultation_posts.consultant_id is '投稿者(相談者)のユーザーID';
 comment on column public.consultation_posts.category      is '相談カテゴリ';

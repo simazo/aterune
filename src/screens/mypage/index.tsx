@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useState } from 'react';
 
 // TODO: 仮実装。ログイン中であることの確認とログアウトのみ。
-// 本実装ではプロフィール、掲示板への投稿・オファーの一覧などを表示する
+// 本実装ではプロフィール、お悩み投稿の一覧などを表示する
 export function MyPage() {
   const { session } = useAuth();
   const [loading, setLoading] = useState(false);
