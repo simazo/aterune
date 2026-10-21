@@ -1,17 +1,22 @@
 import { logger } from '@/lib/logger';
-import { getCurrentPlatform, registerForPushNotificationsAsync } from '@/lib/push-notifications';
+import {
+  getCurrentPlatform,
+  getPushTokenIfPermittedAsync,
+  registerForPushNotificationsAsync,
+} from '@/lib/push-notifications';
 import { supabase } from '@/lib/supabase';
 import { deletePushTokenForCurrentDevice, savePushTokenForCurrentUser } from './push-tokens';
 
 jest.mock('@/lib/push-notifications', () => ({
   registerForPushNotificationsAsync: jest.fn(),
+  getPushTokenIfPermittedAsync: jest.fn(),
   getCurrentPlatform: jest.fn(),
 }));
 
 jest.mock('@/lib/supabase', () => ({
   supabase: {
-    auth: { getUser: jest.fn() },
     from: jest.fn(),
+    rpc: jest.fn(),
   },
 }));
 
@@ -21,6 +26,7 @@ jest.mock('@/lib/logger', () => ({
 
 const TOKEN = 'ExponentPushToken[test]';
 const mockRegisterForPushNotificationsAsync = jest.mocked(registerForPushNotificationsAsync);
+const mockGetPushTokenIfPermittedAsync = jest.mocked(getPushTokenIfPermittedAsync);
 const mockGetCurrentPlatform = jest.mocked(getCurrentPlatform);
 const mockSupabase = jest.mocked(supabase);
 const mockLogger = jest.mocked(logger);
@@ -28,22 +34,20 @@ const mockLogger = jest.mocked(logger);
 beforeEach(() => {
   jest.clearAllMocks();
   mockRegisterForPushNotificationsAsync.mockResolvedValue(TOKEN);
+  mockGetPushTokenIfPermittedAsync.mockResolvedValue(TOKEN);
   mockGetCurrentPlatform.mockReturnValue('ios');
 });
 
 describe('savePushTokenForCurrentUser', () => {
-  it('ログイン中のユーザーIDとtokenをpush_tokensにupsertする', async () => {
-    const upsert = jest.fn().mockResolvedValue({ error: null });
-    mockSupabase.from.mockReturnValue({ upsert } as never);
-    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } } as never);
+  it('tokenとplatformを渡してregister_push_tokenを呼ぶ', async () => {
+    mockSupabase.rpc.mockResolvedValue({ error: null } as never);
 
     await savePushTokenForCurrentUser();
 
-    expect(mockSupabase.from).toHaveBeenCalledWith('push_tokens');
-    expect(upsert).toHaveBeenCalledWith(
-      { user_id: 'user-1', expo_push_token: TOKEN, platform: 'ios' },
-      { onConflict: 'user_id,expo_push_token', ignoreDuplicates: true }
-    );
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('register_push_token', {
+      p_token: TOKEN,
+      p_platform: 'ios',
+    });
   });
 
   it('tokenが取れなければ保存しない', async () => {
@@ -51,32 +55,22 @@ describe('savePushTokenForCurrentUser', () => {
 
     await savePushTokenForCurrentUser();
 
-    expect(mockSupabase.from).not.toHaveBeenCalled();
+    expect(mockSupabase.rpc).not.toHaveBeenCalled();
   });
 
-  it('ログイン中のユーザーがいなければ保存しない', async () => {
-    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: null } } as never);
-
-    await savePushTokenForCurrentUser();
-
-    expect(mockSupabase.from).not.toHaveBeenCalled();
-  });
-
-  it('upsertが失敗しても例外を投げずに終わり、warnでログを出す', async () => {
-    const upsert = jest.fn().mockResolvedValue({ error: { message: 'upsert failed' } });
-    mockSupabase.from.mockReturnValue({ upsert } as never);
-    mockSupabase.auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } } } as never);
+  it('register_push_tokenが失敗しても例外を投げずに終わり、warnでログを出す', async () => {
+    mockSupabase.rpc.mockResolvedValue({ error: { message: 'rpc failed' } } as never);
 
     await expect(savePushTokenForCurrentUser()).resolves.toBeUndefined();
-    expect(upsert).toHaveBeenCalled();
-    expect(mockLogger.warn).toHaveBeenCalledWith('push_tokens登録エラー:', 'upsert failed');
+    expect(mockSupabase.rpc).toHaveBeenCalled();
+    expect(mockLogger.warn).toHaveBeenCalledWith('push_tokens登録エラー:', 'rpc failed');
   });
 
   it('tokenの取得で例外が出ても例外を投げずに終わり、warnでログを出す', async () => {
     mockRegisterForPushNotificationsAsync.mockRejectedValue(new Error('offline'));
 
     await expect(savePushTokenForCurrentUser()).resolves.toBeUndefined();
-    expect(mockSupabase.from).not.toHaveBeenCalled();
+    expect(mockSupabase.rpc).not.toHaveBeenCalled();
     expect(mockLogger.warn).toHaveBeenCalledWith('push token登録中に例外:', 'offline');
   });
 });
@@ -93,6 +87,16 @@ describe('deletePushTokenForCurrentDevice', () => {
     expect(eq).toHaveBeenCalledWith('expo_push_token', TOKEN);
   });
 
+  it('通知の許可を求める関数は呼ばない', async () => {
+    const eq = jest.fn().mockResolvedValue({ error: null });
+    const del = jest.fn().mockReturnValue({ eq });
+    mockSupabase.from.mockReturnValue({ delete: del } as never);
+
+    await deletePushTokenForCurrentDevice();
+
+    expect(mockRegisterForPushNotificationsAsync).not.toHaveBeenCalled();
+  });
+
   it('deleteが失敗しても例外を投げずに終わり、warnでログを出す', async () => {
     const eq = jest.fn().mockResolvedValue({ error: { message: 'delete failed' } });
     const del = jest.fn().mockReturnValue({ eq });
@@ -104,7 +108,7 @@ describe('deletePushTokenForCurrentDevice', () => {
   });
 
   it('tokenが取れなければ何もしない', async () => {
-    mockRegisterForPushNotificationsAsync.mockResolvedValue(null);
+    mockGetPushTokenIfPermittedAsync.mockResolvedValue(null);
 
     await deletePushTokenForCurrentDevice();
 
@@ -112,7 +116,7 @@ describe('deletePushTokenForCurrentDevice', () => {
   });
 
   it('tokenの取得で例外が出ても例外を投げずに終わり、warnでログを出す', async () => {
-    mockRegisterForPushNotificationsAsync.mockRejectedValue(new Error('offline'));
+    mockGetPushTokenIfPermittedAsync.mockRejectedValue(new Error('offline'));
 
     await expect(deletePushTokenForCurrentDevice()).resolves.toBeUndefined();
     expect(mockSupabase.from).not.toHaveBeenCalled();

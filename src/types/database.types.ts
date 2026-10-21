@@ -479,6 +479,10 @@ export type Database = {
           training_period: string
         }[]
       }
+      register_push_token: {
+        Args: { p_platform: string; p_token: string }
+        Returns: undefined
+      }
       search_tellers: {
         Args: {
           p_accepting_only?: boolean

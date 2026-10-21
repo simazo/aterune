@@ -37,7 +37,28 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     return null;
   }
 
-  // Expo Push Token取得
+  return fetchExpoPushToken();
+}
+
+// 許可を求めずにこの端末のpush tokenを取得する（許可済みのときだけ返し、それ以外はnull）
+// ログアウト時のtoken削除など、許可ダイアログを出したくない場面で使う
+export async function getPushTokenIfPermittedAsync(): Promise<string | null> {
+  // Web版・シミュレータ/エミュレータではtokenを登録していない
+  if (Platform.OS === 'web' || !Device.isDevice) {
+    return null;
+  }
+
+  // 未許可の端末にはtokenを登録していない
+  const { status } = await Notifications.getPermissionsAsync();
+  if (status !== 'granted') {
+    return null;
+  }
+
+  return fetchExpoPushToken();
+}
+
+// Expo Push Tokenを取得する（許可の確認は呼び出し側で行う）
+async function fetchExpoPushToken(): Promise<string> {
   const projectId = Constants.expoConfig?.extra?.eas?.projectId;
   const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
 

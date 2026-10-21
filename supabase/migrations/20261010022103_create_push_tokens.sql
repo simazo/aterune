@@ -1,4 +1,6 @@
--- push_tokens: 端末ごとの Expo プッシュ通知トークン。本人だけが読み・登録・削除できる。
+-- push_tokens: 端末ごとの Expo プッシュ通知トークン。本人だけが読み・削除できる。
+-- 登録は register_push_token だけから行う(同じ端末の別ユーザーの行を付け替えるため。直接の insert は許さない)。
+-- 1つのトークンを持てるのは1人だけ(他人宛の通知がこの端末に届かないように)。
 -- 通知の送信(Edge Function)は service_role で全件を読む。
 create table public.push_tokens (
   id              uuid primary key default gen_random_uuid(),
@@ -6,9 +8,11 @@ create table public.push_tokens (
   expo_push_token text not null check (btrim(expo_push_token) <> ''),
   platform        text check (platform in ('ios', 'android', 'web')),
   created_at      timestamptz not null default now(),
-  -- この制約の索引が user_id 先頭なので、user_id 単独の索引は不要
-  constraint push_tokens_user_id_expo_push_token_key unique (user_id, expo_push_token)
+  constraint push_tokens_expo_push_token_key unique (expo_push_token)
 );
+
+-- RLS(auth.uid() = user_id)と、ユーザー削除時の連鎖削除用
+create index push_tokens_user_id_idx on public.push_tokens (user_id);
 
 comment on table  public.push_tokens                  is '端末ごとの Expo プッシュ通知トークン';
 comment on column public.push_tokens.id               is 'ID';
@@ -19,19 +23,13 @@ comment on column public.push_tokens.platform         is '端末の種別(ios / 
 alter table public.push_tokens enable row level security;
 
 revoke all on public.push_tokens from anon, authenticated;
-grant select, delete                                 on public.push_tokens to authenticated;
-grant insert (user_id, expo_push_token, platform)    on public.push_tokens to authenticated;
-grant all                                            on public.push_tokens to service_role;
+grant select, delete on public.push_tokens to authenticated;
+grant all            on public.push_tokens to service_role;
 
 create policy push_tokens_select_own
   on public.push_tokens for select
   to authenticated
   using ((select auth.uid()) = user_id);
-
-create policy push_tokens_insert_own
-  on public.push_tokens for insert
-  to authenticated
-  with check ((select auth.uid()) = user_id);
 
 create policy push_tokens_delete_own
   on public.push_tokens for delete
