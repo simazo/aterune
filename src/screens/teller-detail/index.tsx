@@ -1,4 +1,5 @@
 import { listTellerReviews } from '@/api/reviews';
+import { hasOpenSessionWithTeller } from '@/api/sessions';
 import { getTeller } from '@/api/tellers';
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Button, ButtonText } from '@/components/ui/button';
@@ -11,10 +12,11 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAuth } from '@/hooks/use-auth';
 import { useErrorToast } from '@/hooks/use-error-toast';
+import { logger } from '@/lib/logger';
 import type { TagCategory, TellerDetail as TellerDetailData, TellerReview } from '@/types';
 import { CATEGORY_LABELS } from '@/utils/teller';
-import { Stack } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ReviewList } from './components/review-list';
 import { TellerProfileHeader } from './components/teller-profile-header';
@@ -27,12 +29,42 @@ type Props = {
 };
 
 export function TellerDetail({ tellerId }: Props) {
+  const router = useRouter();
   const showError = useErrorToast();
   const { session } = useAuth();
+  const userId = session?.user.id;
   const insets = useSafeAreaInsets();
   const [teller, setTeller] = useState<TellerDetailData | null>(null);
   const [reviews, setReviews] = useState<TellerReview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // この占い師に、承認待ち・進行中の申込みがあるか。確かめ終わるまでは null
+  const [hasOpenSession, setHasOpenSession] = useState<boolean | null>(null);
+  // 申込み画面へ移る途中か。ボタンを素早く何度も押すと、申込み画面が重なって開くのを防ぐ
+  const isNavigatingRef = useRef(false);
+
+  // 申込み画面から戻ったときにボタンを「申込み済み」に変えるため、画面が表示されるたびに確かめ直す
+  useFocusEffect(
+    useCallback(() => {
+      // 戻ってきたら、また申込み画面へ移れるようにする
+      isNavigatingRef.current = false;
+      if (!userId) return;
+      let isCancelled = false;
+
+      (async () => {
+        const { data, error } = await hasOpenSessionWithTeller(userId, tellerId);
+        if (isCancelled) return;
+        // 確かめられなくても申し込めるようにする（二重の申込みは DB が弾く）
+        if (error) {
+          logger.warn('申込み状況の取得エラー:', error.message);
+        }
+        setHasOpenSession(data ?? false);
+      })();
+
+      return () => {
+        isCancelled = true;
+      };
+    }, [tellerId, userId])
+  );
 
   useEffect(() => {
     // 別の占い師の画面へ素早く切り替えたとき、古い結果で上書きしないようにする
@@ -40,6 +72,8 @@ export function TellerDetail({ tellerId }: Props) {
 
     (async () => {
       setIsLoading(true);
+      // 前の占い師の申込み状況を残さない（確かめ直すまでボタンを押せなくする）
+      setHasOpenSession(null);
       const [tellerResult, reviewsResult] = await Promise.all([
         getTeller(tellerId),
         listTellerReviews(tellerId, REVIEW_PREVIEW_COUNT),
@@ -97,12 +131,23 @@ export function TellerDetail({ tellerId }: Props) {
     );
   }
 
-  const isOwnProfile = session?.user.id === teller.teller_id;
+  const isOwnProfile = userId === teller.teller_id;
   const applyLabel = isOwnProfile
     ? '自分のプロフィールです'
-    : teller.is_accepting
-      ? 'この占い師に申し込む'
-      : '受付停止中です';
+    : !teller.is_accepting
+      ? '受付停止中です'
+      : hasOpenSession
+        ? '申込み済み'
+        : 'この占い師に申し込む';
+  // 申込み済みかを確かめ終わるまでは押せない（null の間）
+  const canApply = !isOwnProfile && teller.is_accepting && hasOpenSession === false;
+
+  function handleApply() {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    router.push({ pathname: '/tellers/[id]/request', params: { id: tellerId } });
+  }
+
   // 1つ以上タグがある種類だけ、CATEGORY_LABELS の順に出す
   const tagCategories = (Object.keys(CATEGORY_LABELS) as TagCategory[]).filter((category) =>
     teller.tags.some((tag) => tag.category === category)
@@ -168,9 +213,12 @@ export function TellerDetail({ tellerId }: Props) {
         className="border-t border-border bg-card px-4 pt-3"
         style={{ paddingBottom: insets.bottom + 12 }}
       >
-        {/* TODO: 仮実装。申込み機能が未実装のため常に押せない。
-            本実装では申込み画面へ遷移させ、受付停止中・自分自身のときだけ押せなくする */}
-        <Button size="lg" isDisabled className="w-full max-w-2xl self-center">
+        <Button
+          size="lg"
+          isDisabled={!canApply}
+          onPress={handleApply}
+          className="w-full max-w-2xl self-center"
+        >
           <ButtonText>{applyLabel}</ButtonText>
         </Button>
       </VStack>
