@@ -62,7 +62,8 @@ export function SessionRequest({ tellerId }: Props) {
     />
   );
 
-  if (isLoading || !userId) {
+  // 別の占い師の申込み画面へ切り替えた直後（読み込みが始まる前の描画）に、前の占い師のフォームを出さない
+  if (isLoading || !userId || (teller && teller.teller_id !== tellerId)) {
     return (
       <VStack className="flex-1 items-center justify-center bg-background">
         {header}
