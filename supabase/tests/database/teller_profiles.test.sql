@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(24);
 
 -- ---------- 準備 ----------
 -- profiles は handle_new_user のトリガーで自動作成される
@@ -170,15 +170,11 @@ select throws_ok(
 
 reset role;
 
--- ---------- 22-24. 削除すると is_teller と active_mode が戻る ----------
--- alice を teller モードにしてから、占い師登録を削除する
-update public.profiles set active_mode = 'teller'
-  where id = '00000000-0000-0000-0000-0000000000c1';
-
+-- ---------- 22-23. 削除すると is_teller が戻る ----------
 select lives_ok(
   $$ delete from public.teller_profiles
        where profile_id = '00000000-0000-0000-0000-0000000000c1' $$,
-  'teller モードのままでも、占い師登録を削除できる(CHECK 制約に違反しない)'
+  'システム側からは占い師登録を削除できる'
 );
 
 select is(
@@ -188,14 +184,7 @@ select is(
   '削除されると profiles.is_teller が false に戻る'
 );
 
-select is(
-  (select active_mode from public.profiles
-    where id = '00000000-0000-0000-0000-0000000000c1'),
-  'consultant',
-  '削除されると active_mode が consultant に戻る'
-);
-
--- ---------- 25. ユーザー削除の連鎖 ----------
+-- ---------- 24. ユーザー削除の連鎖 ----------
 select lives_ok(
   $$ delete from auth.users
        where id = '00000000-0000-0000-0000-0000000000c2' $$,

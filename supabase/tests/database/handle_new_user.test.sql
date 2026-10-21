@@ -1,5 +1,5 @@
 begin;
-select plan(8);
+select plan(7);
 
 -- ---------- 準備: auth.users に insert するだけ(profiles は触らない) ----------
 insert into auth.users (id, aud, role, email, raw_user_meta_data) values
@@ -39,7 +39,7 @@ select is(
   'どちらもなければ、固定の名前が使われる(サインアップが失敗しない)'
 );
 
--- ---------- 5-6. 初期値 ----------
+-- ---------- 5. 初期値 ----------
 select is(
   (select is_teller from public.profiles
     where id = '00000000-0000-0000-0000-0000000000b1'),
@@ -47,14 +47,7 @@ select is(
   '初期状態は is_teller = false'
 );
 
-select is(
-  (select active_mode from public.profiles
-    where id = '00000000-0000-0000-0000-0000000000b1'),
-  'consultant',
-  '初期状態は active_mode = consultant'
-);
-
--- ---------- 7-8. API から直接呼べないこと ----------
+-- ---------- 6-7. API から直接呼べないこと ----------
 select is(
   has_function_privilege('anon', 'public.handle_new_user()', 'execute'),
   false,

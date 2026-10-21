@@ -1,5 +1,5 @@
 begin;
-select plan(11);
+select plan(8);
 
 -- ---------- 準備 ----------
 -- profiles は handle_new_user のトリガーで自動作成される
@@ -18,24 +18,7 @@ select is(
 select has_trigger('public', 'profiles', 'profiles_set_updated_at',
   'profiles に updated_at 用のトリガーが付いている');
 
--- ---------- 3-4. active_mode の制約 ----------
-select throws_ok(
-  $$ update public.profiles set active_mode = 'teller'
-       where id = '00000000-0000-0000-0000-0000000000a1' $$,
-  '23514',
-  null,
-  'is_teller=false のユーザーは teller モードにできない'
-);
-
-select throws_ok(
-  $$ update public.profiles set active_mode = 'invalid'
-       where id = '00000000-0000-0000-0000-0000000000a1' $$,
-  '23514',
-  null,
-  'active_mode に不正な値は入れられない'
-);
-
--- ---------- 5-6. anon(未ログイン) ----------
+-- ---------- 3-4. anon(未ログイン) ----------
 set local role anon;
 
 -- seed などテスト外の行に左右されないよう、テストで入れた行だけを数える
@@ -57,7 +40,7 @@ select throws_ok(
 
 reset role;
 
--- ---------- 7-10. authenticated(alice としてログイン) ----------
+-- ---------- 5-8. authenticated(alice としてログイン) ----------
 set local role authenticated;
 set local request.jwt.claims =
   '{"sub":"00000000-0000-0000-0000-0000000000a1","role":"authenticated"}';
@@ -91,19 +74,6 @@ select throws_ok(
   '42501',
   null,
   '自分で is_teller は書き換えられない'
-);
-
--- ---------- 11. 占い師登録済みなら teller モードにできる ----------
-reset role;
-update public.profiles set is_teller = true
-  where id = '00000000-0000-0000-0000-0000000000a1';  -- システム側が更新した想定
-
-set local role authenticated;
-
-select lives_ok(
-  $$ update public.profiles set active_mode = 'teller'
-       where id = '00000000-0000-0000-0000-0000000000a1' $$,
-  'is_teller=true なら teller モードに切り替えられる'
 );
 
 select * from finish();

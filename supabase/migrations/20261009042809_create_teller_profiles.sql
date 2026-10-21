@@ -40,7 +40,7 @@ create trigger teller_profiles_set_updated_at
   before update on public.teller_profiles
   for each row execute function public.set_updated_at();
 
--- 3. profiles.is_teller / active_mode の同期 ----------------
+-- 3. profiles.is_teller の同期 ------------------------------
 create function public.sync_is_teller()
 returns trigger
 language plpgsql
@@ -53,11 +53,8 @@ begin
       set is_teller = true
       where id = new.profile_id;
   elsif tg_op = 'DELETE' then
-    -- 占い師でなくなるので、モードも相談者に戻す
-    -- (1つの update で両方変えないと、CHECK 制約に違反する)
     update public.profiles
-      set is_teller = false,
-          active_mode = 'consultant'
+      set is_teller = false
       where id = old.profile_id;
   end if;
   return coalesce(new, old);

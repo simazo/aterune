@@ -191,7 +191,6 @@ export type Database = {
       }
       profiles: {
         Row: {
-          active_mode: string
           avatar_url: string | null
           bio: string | null
           created_at: string
@@ -201,7 +200,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          active_mode?: string
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
@@ -211,7 +209,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          active_mode?: string
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
