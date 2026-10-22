@@ -1,5 +1,5 @@
 begin;
-select plan(21);
+select plan(23);
 
 -- ===== テストデータ(postgres 権限)=====
 -- carol=相談者 / bob=占い師 / dave=無関係のユーザー / erin=占い師(pending 用)
@@ -193,6 +193,20 @@ select throws_ok(
   $$ insert into public.messages (session_id, sender_id, content) values
      (gen_random_uuid(), '00000000-0000-0000-0000-0000000000c1', 'x') $$,
   '23503', null, '存在しない session_id は外部キー違反'
+);
+
+-- 22. content は 1000 文字まで
+select throws_ok(
+  $$ insert into public.messages (session_id, sender_id, content) values
+     ('00000000-0000-0000-0000-000000000601', '00000000-0000-0000-0000-0000000000c1', repeat('あ', 1001)) $$,
+  '23514', null, 'content は 1001 文字以上にできない'
+);
+
+-- 23. ちょうど上限の文字数なら入る
+select lives_ok(
+  $$ insert into public.messages (session_id, sender_id, content) values
+     ('00000000-0000-0000-0000-000000000601', '00000000-0000-0000-0000-0000000000c1', repeat('あ', 1000)) $$,
+  'content はちょうど 1000 文字なら入る'
 );
 
 -- 21. セッションを消すと messages も連鎖削除される

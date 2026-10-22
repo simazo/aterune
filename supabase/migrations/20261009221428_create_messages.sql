@@ -5,14 +5,17 @@ create table public.messages (
   session_id uuid not null references public.sessions (id) on delete cascade,
   sender_id  uuid not null references auth.users (id) on delete cascade,
   content    text not null check (btrim(content) <> ''),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+
+  constraint messages_content_length_check
+    check (char_length(content) <= 1000)
 );
 
 comment on table  public.messages            is 'セッション内のメッセージ';
 comment on column public.messages.id         is 'メッセージID';
 comment on column public.messages.session_id is '対象セッションID';
 comment on column public.messages.sender_id  is '送信者のユーザーID';
-comment on column public.messages.content    is 'メッセージ本文(空白のみは不可)';
+comment on column public.messages.content    is 'メッセージ本文(空白のみは不可。1000文字まで)';
 
 -- セッション内を時系列で取り出す用
 create index messages_session_id_idx on public.messages (session_id, created_at);
