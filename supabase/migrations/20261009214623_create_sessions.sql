@@ -10,7 +10,7 @@ create table public.sessions (
   teller_id         uuid not null references public.teller_profiles (profile_id),
   initiated_by      text not null,
   status            text not null default 'pending',
-  category          text,
+  concern_tag_id    uuid references public.tags (id),
   concern           text not null,
   post_id           uuid references public.consultation_posts (id) on delete set null,
   applicant_message text,
@@ -46,7 +46,7 @@ comment on column public.sessions.consultant_id     is '相談者側のユーザ
 comment on column public.sessions.teller_id         is '占い師側のユーザーID(申込みの方向に関わらず常に占い師)';
 comment on column public.sessions.initiated_by      is '申込みの起点(consultant=相談者から、teller=占い師から(お悩み投稿への応募))';
 comment on column public.sessions.status            is 'pending=承認待ち / active=進行中 / completed=相談者の完了操作 / auto_completed=相談者側の無操作による自動完了 / rejected=拒否 / expired=申込みの期限切れ';
-comment on column public.sessions.category          is '相談カテゴリ(お悩み投稿経由の場合は投稿からコピー)';
+comment on column public.sessions.concern_tag_id    is '悩みタグのID(お悩み投稿経由の場合は投稿からコピー。相談者からの申込みでは NULL)';
 comment on column public.sessions.concern           is '悩みの内容(お悩み投稿経由の場合は投稿からコピー。1000文字まで)';
 comment on column public.sessions.post_id           is 'お悩み投稿経由の場合の投稿ID。それ以外と投稿削除時はNULL';
 comment on column public.sessions.applicant_message is '申込み時のひとこと(任意。100文字まで)';
@@ -60,6 +60,10 @@ create index sessions_recipient_id_idx  on public.sessions (recipient_id);
 create index sessions_consultant_id_idx on public.sessions (consultant_id);
 create index sessions_teller_id_idx     on public.sessions (teller_id);
 create index sessions_post_id_idx       on public.sessions (post_id)          where post_id is not null;
+create index sessions_concern_tag_id_idx on public.sessions (concern_tag_id)  where concern_tag_id is not null;
+
+-- 同じ投稿へは、占い師1人につき1回だけ応募できる(拒否・期限切れのあとも再応募させない)
+create unique index sessions_post_id_teller_id_key on public.sessions (post_id, teller_id) where post_id is not null;
 create index sessions_expires_at_idx    on public.sessions (expires_at)       where status = 'pending';
 create index sessions_last_activity_idx on public.sessions (last_activity_at) where status = 'active';
 
@@ -68,6 +72,7 @@ create index sessions_last_activity_idx on public.sessions (last_activity_at) wh
 -- ============================================================
 
 -- お悩み投稿経由の整合性:
+--   ・占い師からの申込みは、お悩み投稿への応募だけ(作成時のみ確かめる。投稿の削除で post_id が NULL になる更新は通す)
 --   ・占い師から投稿者への応募であること
 --   ・相談者側が投稿者本人であること
 --   ・閉じた投稿には新規に応募できないこと
@@ -81,6 +86,10 @@ declare
   v_owner  uuid;
   v_status text;
 begin
+  if tg_op = 'INSERT' and new.initiated_by = 'teller' and new.post_id is null then
+    raise exception 'a teller can only apply through a post';
+  end if;
+
   if new.post_id is null then
     return new;
   end if;
@@ -163,7 +172,7 @@ begin
 end;
 $$;
 
--- お悩み投稿経由なら、投稿の category / concern をセッションにコピーする
+-- お悩み投稿経由なら、投稿の concern_tag_id / concern をセッションにコピーする
 create function public.copy_post_content_to_session()
 returns trigger
 language plpgsql
@@ -172,7 +181,7 @@ set search_path = ''
 as $$
 begin
   if new.post_id is not null then
-    select category, concern into new.category, new.concern
+    select concern_tag_id, concern into new.concern_tag_id, new.concern
       from public.consultation_posts
      where id = new.post_id;
   end if;
@@ -346,8 +355,11 @@ alter table public.sessions enable row level security;
 
 revoke all on public.sessions from anon, authenticated;
 grant select on public.sessions to authenticated;
+-- concern_tag_id は投稿経由ならトリガーがコピーするので、利用者には入れさせない。
+-- post_id も入れさせない(お悩み投稿への応募は apply_to_consultation_post だけ)。
+-- 直接入れられると、投稿者でない相手を指定したときのエラーの有無から、匿名の投稿者を割り出せてしまうため
 grant insert (applicant_id, recipient_id, consultant_id, teller_id, initiated_by,
-              category, concern, post_id, applicant_message)
+              concern, applicant_message)
   on public.sessions to authenticated;
 grant update (status) on public.sessions to authenticated;
 grant all on public.sessions to service_role;

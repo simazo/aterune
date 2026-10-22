@@ -1,5 +1,5 @@
 begin;
-select plan(68);
+select plan(73);
 
 -- ===== テストデータ(postgres 権限) =====
 -- alice=占い師でもある相談者 / bob=占い師 / carol=占い師ではない一般ユーザー / dave=占い師(完了数・制約用)
@@ -11,7 +11,8 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000f4', 'dave@example.com'),
   ('00000000-0000-0000-0000-0000000000f5', 'erin@example.com'),
   ('00000000-0000-0000-0000-0000000000f6', 'frank@example.com'),
-  ('00000000-0000-0000-0000-0000000000f7', 'gwen@example.com');
+  ('00000000-0000-0000-0000-0000000000f7', 'gwen@example.com'),
+  ('00000000-0000-0000-0000-0000000000f0', 'ivy@example.com'); -- ivy=占い師ではない(外部キーの確認用)
 
 insert into public.teller_profiles (profile_id) values
   ('00000000-0000-0000-0000-0000000000f1'),
@@ -21,11 +22,15 @@ insert into public.teller_profiles (profile_id) values
   ('00000000-0000-0000-0000-0000000000f6'),
   ('00000000-0000-0000-0000-0000000000f7');
 
+-- seed に依存しないよう、テスト用の悩みタグを作る
+insert into public.tags (id, category, slug, name) values
+  ('00000000-0000-0000-0000-0000000000e1', 'concern', 'test-concern-a', 'テスト悩みA');
+
 -- alice のお悩み投稿(p1=open、p2=closed、p3=open)
-insert into public.consultation_posts (id, consultant_id, category, concern, status) values
-  ('00000000-0000-0000-0000-000000000a01', '00000000-0000-0000-0000-0000000000f1', '恋愛', 'aliceの悩み', 'open'),
-  ('00000000-0000-0000-0000-000000000a02', '00000000-0000-0000-0000-0000000000f1', '仕事', '閉じた悩み',   'closed'),
-  ('00000000-0000-0000-0000-000000000a03', '00000000-0000-0000-0000-0000000000f1', '健康', 'aliceの別の悩み', 'open');
+insert into public.consultation_posts (id, consultant_id, concern_tag_id, concern, status) values
+  ('00000000-0000-0000-0000-000000000a01', '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e1', 'aliceの悩み', 'open'),
+  ('00000000-0000-0000-0000-000000000a02', '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e1', '閉じた悩み',   'closed'),
+  ('00000000-0000-0000-0000-000000000a03', '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000e1', 'aliceの別の悩み', 'open');
 
 -- s4: carol → bob の期限切れの pending。
 -- s1 より先に作る(期限切れの pending は二重申込みとして数えないので、後から s1 を作れる)
@@ -82,6 +87,20 @@ select is(
   'post_id があれば concern が投稿からコピーされる'
 );
 
+-- 69. お悩み投稿経由なら悩みタグも投稿からコピーされる
+select is(
+  (select concern_tag_id from public.sessions where id = '00000000-0000-0000-0000-000000000505'),
+  '00000000-0000-0000-0000-0000000000e1'::uuid,
+  'post_id があれば concern_tag_id が投稿からコピーされる'
+);
+
+-- 70. 相談者からの申込みでは悩みタグは空のまま
+select is(
+  (select concern_tag_id from public.sessions where id = '00000000-0000-0000-0000-000000000501'),
+  null::uuid,
+  '相談者からの申込みでは concern_tag_id は null'
+);
+
 -- ===== anon =====
 set local role anon;
 
@@ -118,8 +137,8 @@ select lives_ok(
 -- 9. 他人名義(applicant_id が自分でない)では申込みできない
 select throws_ok(
   $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern)
-     values ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000f1',
-             '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f2', 'teller', 'なりすまし') $$,
+     values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f4',
+             '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f4', 'consultant', 'なりすまし') $$,
   '42501', null, '他人名義では申込みできない'
 );
 
@@ -139,20 +158,20 @@ select throws_ok(
   '42501', null, 'insert 時に expires_at は指定できない'
 );
 
--- 12. initiated_by と申込者の役割が食い違う行は作れない
+-- 12. initiated_by と申込者の役割が食い違う行は作れない(相談者からの申込みなのに、申込者が占い師側)
 -- (CHECK 制約は BEFORE トリガーの後に確かめられるため、二重申込みに当たらない dave との組み合わせにする)
 select throws_ok(
   $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern)
      values ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f4',
-             '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f4', 'teller', 'x') $$,
+             '00000000-0000-0000-0000-0000000000f4', '00000000-0000-0000-0000-0000000000f3', 'consultant', 'x') $$,
   '23514', null, 'initiated_by と申込者の役割が食い違う行は作れない'
 );
 
 -- 13. 占い師でない人は占い師側になれない(外部キー)
 select throws_ok(
   $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern)
-     values ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f2',
-             '00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000f3', 'teller', 'x') $$,
+     values ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f0',
+             '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f0', 'consultant', 'x') $$,
   '23503', null, '占い師でない人は teller_id になれない'
 );
 
@@ -224,20 +243,18 @@ select lives_ok(
 
 -- 23. closed の投稿には応募できない
 select throws_ok(
-  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, post_id)
-     values ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000f1',
-             '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f2', 'teller',
-             '00000000-0000-0000-0000-000000000a02') $$,
+  $$ select public.apply_to_consultation_post('00000000-0000-0000-0000-000000000a02', null) $$,
   'P0001', 'cannot apply to a closed post', 'closed の投稿には応募できない'
 );
 
--- 24. 応募先が投稿者でなければ作れない
+-- 71. 利用者は post_id を直接入れられない(応募は apply_to_consultation_post だけ。
+-- 直接入れられると、エラーの有無から匿名の投稿者を割り出せるため)
 select throws_ok(
   $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, post_id)
      values ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000f3',
              '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f2', 'teller',
              '00000000-0000-0000-0000-000000000a01') $$,
-  'P0001', 'a post session must be initiated by a teller toward the post owner', 'recipient が投稿者でなければ作れない'
+  '42501', null, '利用者は post_id を直接 insert できない'
 );
 
 -- 25. 期限切れの pending は承認できない
@@ -276,10 +293,7 @@ select lives_ok(
 
 -- 26. 占い師は open の投稿に応募できる(alice の投稿 p1。bob は s5 で応募済みなので、gwen が応募する)
 select lives_ok(
-  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, post_id)
-     values ('00000000-0000-0000-0000-0000000000f7', '00000000-0000-0000-0000-0000000000f1',
-             '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f7', 'teller',
-             '00000000-0000-0000-0000-000000000a01') $$,
+  $$ select public.apply_to_consultation_post('00000000-0000-0000-0000-000000000a01', null) $$,
   '占い師は open の投稿に応募できる'
 );
 reset role;
@@ -316,6 +330,33 @@ select isnt(
 -- ===== システム(service_role / postgres)=====
 -- 直前のユーザーの claims が残っているので消す(set_config(..., true) はトランザクション内で残る)
 select set_config('request.jwt.claims', '', true);
+
+-- 24. 応募先が投稿者でなければ作れない(利用者は post_id を入れられないので、システムからの登録で確かめる)
+select throws_ok(
+  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, post_id)
+     values ('00000000-0000-0000-0000-0000000000f2', '00000000-0000-0000-0000-0000000000f3',
+             '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f2', 'teller',
+             '00000000-0000-0000-0000-000000000a01') $$,
+  'P0001', 'a post session must be initiated by a teller toward the post owner', 'recipient が投稿者でなければ作れない'
+);
+
+-- 72. 占い師からの申込みは、お悩み投稿への応募だけ(システムからの登録でも弾く)
+select throws_ok(
+  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern)
+     values ('00000000-0000-0000-0000-0000000000f4', '00000000-0000-0000-0000-0000000000f0',
+             '00000000-0000-0000-0000-0000000000f0', '00000000-0000-0000-0000-0000000000f4', 'teller', 'x') $$,
+  'P0001', 'a teller can only apply through a post', '占い師からはお悩み投稿を通さずに申し込めない'
+);
+
+-- 73. initiated_by と申込者の役割が食い違う行は作れない(占い師からの申込みなのに、申込者が相談者側)
+-- (投稿者 alice を申込者にし、投稿経由の確かめと二重申込みに当たらない dave との組み合わせにする)
+select throws_ok(
+  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, post_id)
+     values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f4',
+             '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f4', 'teller',
+             '00000000-0000-0000-0000-000000000a01') $$,
+  '23514', null, '占い師からの申込みで、申込者が相談者側の行は作れない'
+);
 
 -- 30. システムは pending → expired にできる
 select lives_ok(
@@ -509,10 +550,7 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000
 
 -- 57. 受付停止中でも、占い師からお悩み投稿へは応募できる(p3 は 44 で open に戻っている)
 select lives_ok(
-  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, post_id)
-     values ('00000000-0000-0000-0000-0000000000f8', '00000000-0000-0000-0000-0000000000f1',
-             '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f8', 'teller',
-             '00000000-0000-0000-0000-000000000a03') $$,
+  $$ select public.apply_to_consultation_post('00000000-0000-0000-0000-000000000a03', null) $$,
   '受付停止中の占い師でも、お悩み投稿へは応募できる'
 );
 reset role;
@@ -528,8 +566,8 @@ insert into auth.users (id, email) values
 insert into public.teller_profiles (profile_id) values
   ('00000000-0000-0000-0000-0000000000fe');
 
-insert into public.consultation_posts (id, consultant_id, concern) values
-  ('00000000-0000-0000-0000-000000000a04', '00000000-0000-0000-0000-0000000000fd', 'mikaの悩み');
+insert into public.consultation_posts (id, consultant_id, concern_tag_id, concern) values
+  ('00000000-0000-0000-0000-000000000a04', '00000000-0000-0000-0000-0000000000fd', '00000000-0000-0000-0000-0000000000e1', 'mikaの悩み');
 
 insert into public.sessions
   (id, applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern)
@@ -555,10 +593,7 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000
 
 -- 59. 逆向き(占い師からお悩み投稿への応募)でも弾く
 select throws_ok(
-  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, post_id)
-     values ('00000000-0000-0000-0000-0000000000fe', '00000000-0000-0000-0000-0000000000fd',
-             '00000000-0000-0000-0000-0000000000fd', '00000000-0000-0000-0000-0000000000fe', 'teller',
-             '00000000-0000-0000-0000-000000000a04') $$,
+  $$ select public.apply_to_consultation_post('00000000-0000-0000-0000-000000000a04', null) $$,
   'P0001', 'an open session already exists between the consultant and the teller',
   '承認待ちのセッションがあれば、占い師からも同じ相談者の投稿へ応募できない'
 );
@@ -642,8 +677,8 @@ select set_config('request.jwt.claims', '', true);
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000ff', 'olga@example.com');
 
-insert into public.consultation_posts (id, consultant_id, concern) values
-  ('00000000-0000-0000-0000-000000000a05', '00000000-0000-0000-0000-0000000000ff', 'olgaの悩み');
+insert into public.consultation_posts (id, consultant_id, concern_tag_id, concern) values
+  ('00000000-0000-0000-0000-000000000a05', '00000000-0000-0000-0000-0000000000ff', '00000000-0000-0000-0000-0000000000e1', 'olgaの悩み');
 
 insert into public.sessions
   (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, post_id)

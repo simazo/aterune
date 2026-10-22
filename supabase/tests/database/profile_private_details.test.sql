@@ -26,15 +26,22 @@ insert into public.profile_private_details (profile_id, birthdate, gender) value
 --   erin: erin(占い師)が応募した pending       → 見えない
 --   fay : carol が申し込んだが rejected        → 見えない
 --   gus : carol が申し込んだ active            → 見える
+-- erin の応募先になる carol のお悩み投稿(占い師からの申込みは投稿経由だけのため)。seed に依存しないようタグも作る
+insert into public.tags (id, category, slug, name) values
+  ('00000000-0000-0000-0000-0000000000e1', 'concern', 'test-concern-a', 'テスト悩みA');
+
+insert into public.consultation_posts (id, consultant_id, concern_tag_id, concern) values
+  ('00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000e1', 'x');
+
 insert into public.sessions
-  (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern, status)
-select applicant, recipient, '00000000-0000-0000-0000-0000000000c1', teller, initiated_by, 'x', status
+  (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern, status, post_id)
+select applicant, recipient, '00000000-0000-0000-0000-0000000000c1', teller, initiated_by, 'x', status, post_id
 from (values
-  ('00000000-0000-0000-0000-0000000000c1'::uuid, '00000000-0000-0000-0000-0000000000b2'::uuid, '00000000-0000-0000-0000-0000000000b2'::uuid, 'consultant', 'pending'),
-  ('00000000-0000-0000-0000-0000000000e4'::uuid, '00000000-0000-0000-0000-0000000000c1'::uuid, '00000000-0000-0000-0000-0000000000e4'::uuid, 'teller',     'pending'),
-  ('00000000-0000-0000-0000-0000000000c1'::uuid, '00000000-0000-0000-0000-0000000000f5'::uuid, '00000000-0000-0000-0000-0000000000f5'::uuid, 'consultant', 'rejected'),
-  ('00000000-0000-0000-0000-0000000000c1'::uuid, '00000000-0000-0000-0000-0000000000a6'::uuid, '00000000-0000-0000-0000-0000000000a6'::uuid, 'consultant', 'active')
-) as v(applicant, recipient, teller, initiated_by, status);
+  ('00000000-0000-0000-0000-0000000000c1'::uuid, '00000000-0000-0000-0000-0000000000b2'::uuid, '00000000-0000-0000-0000-0000000000b2'::uuid, 'consultant', 'pending',  null::uuid),
+  ('00000000-0000-0000-0000-0000000000e4'::uuid, '00000000-0000-0000-0000-0000000000c1'::uuid, '00000000-0000-0000-0000-0000000000e4'::uuid, 'teller',     'pending',  '00000000-0000-0000-0000-0000000000d1'::uuid),
+  ('00000000-0000-0000-0000-0000000000c1'::uuid, '00000000-0000-0000-0000-0000000000f5'::uuid, '00000000-0000-0000-0000-0000000000f5'::uuid, 'consultant', 'rejected', null::uuid),
+  ('00000000-0000-0000-0000-0000000000c1'::uuid, '00000000-0000-0000-0000-0000000000a6'::uuid, '00000000-0000-0000-0000-0000000000a6'::uuid, 'consultant', 'active',   null::uuid)
+) as v(applicant, recipient, teller, initiated_by, status, post_id);
 
 -- 1. RLS が有効
 select ok(

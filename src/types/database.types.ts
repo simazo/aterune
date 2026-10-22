@@ -36,8 +36,8 @@ export type Database = {
     Tables: {
       consultation_posts: {
         Row: {
-          category: string | null
           concern: string
+          concern_tag_id: string
           consultant_id: string
           created_at: string
           id: string
@@ -45,8 +45,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          category?: string | null
           concern: string
+          concern_tag_id: string
           consultant_id: string
           created_at?: string
           id?: string
@@ -54,15 +54,23 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          category?: string | null
           concern?: string
+          concern_tag_id?: string
           consultant_id?: string
           created_at?: string
           id?: string
           status?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "consultation_posts_concern_tag_id_fkey"
+            columns: ["concern_tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       favorites: {
         Row: {
@@ -285,9 +293,9 @@ export type Database = {
         Row: {
           applicant_id: string
           applicant_message: string | null
-          category: string | null
           completed_at: string | null
           concern: string
+          concern_tag_id: string | null
           consultant_id: string
           created_at: string
           expires_at: string
@@ -303,9 +311,9 @@ export type Database = {
         Insert: {
           applicant_id: string
           applicant_message?: string | null
-          category?: string | null
           completed_at?: string | null
           concern: string
+          concern_tag_id?: string | null
           consultant_id: string
           created_at?: string
           expires_at?: string
@@ -321,9 +329,9 @@ export type Database = {
         Update: {
           applicant_id?: string
           applicant_message?: string | null
-          category?: string | null
           completed_at?: string | null
           concern?: string
+          concern_tag_id?: string | null
           consultant_id?: string
           created_at?: string
           expires_at?: string
@@ -337,6 +345,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sessions_concern_tag_id_fkey"
+            columns: ["concern_tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sessions_post_id_fkey"
             columns: ["post_id"]
@@ -459,6 +474,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_to_consultation_post: {
+        Args: { p_applicant_message?: string; p_post_id: string }
+        Returns: string
+      }
+      close_consultation_post: {
+        Args: { p_post_id: string }
+        Returns: undefined
+      }
+      get_consultation_post: {
+        Args: { p_post_id: string }
+        Returns: {
+          concern: string
+          concern_tag_id: string
+          concern_tag_name: string
+          created_at: string
+          has_applied: boolean
+          id: string
+          is_mine: boolean
+          status: string
+        }[]
+      }
       get_teller: {
         Args: { p_teller_id: string }
         Returns: {
@@ -474,6 +510,30 @@ export type Database = {
           tags: Json
           teller_id: string
           training_period: string
+        }[]
+      }
+      list_consultation_posts: {
+        Args: never
+        Returns: {
+          concern: string
+          concern_tag_id: string
+          concern_tag_name: string
+          created_at: string
+          has_applied: boolean
+          id: string
+          is_mine: boolean
+          status: string
+        }[]
+      }
+      list_my_consultation_posts: {
+        Args: never
+        Returns: {
+          concern: string
+          concern_tag_id: string
+          concern_tag_name: string
+          created_at: string
+          id: string
+          status: string
         }[]
       }
       register_push_token: {
