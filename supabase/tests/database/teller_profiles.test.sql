@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(26);
 
 -- ---------- 準備 ----------
 -- profiles は handle_new_user のトリガーで自動作成される
@@ -67,7 +67,7 @@ select throws_ok(
 
 reset role;
 
--- ---------- 9-21. authenticated(bob = c2 としてログイン) ----------
+-- ---------- 9-23. authenticated(bob = c2 としてログイン) ----------
 set local role authenticated;
 set local request.jwt.claims =
   '{"sub":"00000000-0000-0000-0000-0000000000c2","role":"authenticated"}';
@@ -160,6 +160,20 @@ select throws_ok(
   'training_period は 21 文字以上にできない'
 );
 
+select lives_ok(
+  $$ update public.teller_profiles set self_pr = repeat('あ', 1000)
+       where profile_id = '00000000-0000-0000-0000-0000000000c2' $$,
+  'self_pr は 1000 文字まで設定できる'
+);
+
+select throws_ok(
+  $$ update public.teller_profiles set self_pr = repeat('あ', 1001)
+       where profile_id = '00000000-0000-0000-0000-0000000000c2' $$,
+  '23514',
+  null,
+  'self_pr は 1001 文字以上にできない'
+);
+
 select throws_ok(
   $$ delete from public.teller_profiles
        where profile_id = '00000000-0000-0000-0000-0000000000c2' $$,
@@ -170,7 +184,7 @@ select throws_ok(
 
 reset role;
 
--- ---------- 22-23. 削除すると is_teller が戻る ----------
+-- ---------- 24-25. 削除すると is_teller が戻る ----------
 select lives_ok(
   $$ delete from public.teller_profiles
        where profile_id = '00000000-0000-0000-0000-0000000000c1' $$,
@@ -184,7 +198,7 @@ select is(
   '削除されると profiles.is_teller が false に戻る'
 );
 
--- ---------- 24. ユーザー削除の連鎖 ----------
+-- ---------- 26. ユーザー削除の連鎖 ----------
 select lives_ok(
   $$ delete from auth.users
        where id = '00000000-0000-0000-0000-0000000000c2' $$,

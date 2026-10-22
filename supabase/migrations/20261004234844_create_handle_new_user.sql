@@ -10,13 +10,18 @@ security definer
 set search_path = ''
 as $$
 begin
+  -- profiles_display_name_check(空白だけは不可、20 文字まで)でサインアップが失敗しないよう、
+  -- 前後の空白(半角・全角)を除き、20 文字に切り詰める
   insert into public.profiles (id, display_name)
   values (
     new.id,
-    coalesce(
-      nullif(trim(new.raw_user_meta_data ->> 'display_name'), ''),
-      nullif(split_part(new.email, '@', 1), ''),
-      'ユーザー'
+    left(
+      coalesce(
+        nullif(btrim(new.raw_user_meta_data ->> 'display_name', ' 　'), ''),
+        nullif(split_part(new.email, '@', 1), ''),
+        'ユーザー'
+      ),
+      20
     )
   );
   return new;

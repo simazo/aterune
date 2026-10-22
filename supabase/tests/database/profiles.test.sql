@@ -1,5 +1,5 @@
 begin;
-select plan(8);
+select plan(14);
 
 -- ---------- 準備 ----------
 -- profiles は handle_new_user のトリガーで自動作成される
@@ -74,6 +74,49 @@ select throws_ok(
   '42501',
   null,
   '自分で is_teller は書き換えられない'
+);
+
+-- ---------- 9-14. 文字数・空白の制約 ----------
+select throws_ok(
+  $$ update public.profiles set display_name = ' 　'
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  '23514',
+  null,
+  'display_name は空白だけにできない(半角・全角とも)'
+);
+
+select lives_ok(
+  $$ update public.profiles set display_name = repeat('あ', 20)
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  'display_name は 20 文字まで設定できる'
+);
+
+select throws_ok(
+  $$ update public.profiles set display_name = repeat('あ', 21)
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  '23514',
+  null,
+  'display_name は 21 文字以上にできない'
+);
+
+select lives_ok(
+  $$ update public.profiles set bio = repeat('あ', 200)
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  'bio は 200 文字まで設定できる'
+);
+
+select throws_ok(
+  $$ update public.profiles set bio = repeat('あ', 201)
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  '23514',
+  null,
+  'bio は 201 文字以上にできない'
+);
+
+select lives_ok(
+  $$ update public.profiles set bio = null
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  'bio は未入力(NULL)に戻せる'
 );
 
 select * from finish();

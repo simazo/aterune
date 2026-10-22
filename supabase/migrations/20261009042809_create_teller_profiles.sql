@@ -22,12 +22,15 @@ create table public.teller_profiles (
     check (
       training_period is null
       or (btrim(training_period, ' 　') <> '' and char_length(training_period) <= 20)
-    )
+    ),
+  -- 自己PRは任意入力、1000 文字まで
+  constraint teller_profiles_self_pr_check
+    check (self_pr is null or char_length(self_pr) <= 1000)
 );
 
 comment on table  public.teller_profiles is '占い師専用のプロフィール(占い師のみ行が存在)';
 comment on column public.teller_profiles.profile_id is '対象ユーザーID(profilesと1:1、占い師のみ行が存在)';
-comment on column public.teller_profiles.self_pr is '占い師専用の自己PR文(経歴・得意な占術・鑑定スタイル等の長文を想定。profiles.bioとは別カラム)';
+comment on column public.teller_profiles.self_pr is '占い師専用の自己PR文(経歴・得意な占術・鑑定スタイル等の長文を想定。profiles.bioとは別カラム。任意入力、1000文字まで)';
 comment on column public.teller_profiles.is_accepting is '受付ステータス(true=新規セッション受付中)';
 comment on column public.teller_profiles.requires_birthdate is 'セッション申込み時に相談者の生年月日入力を必須にするか';
 comment on column public.teller_profiles.training_period is '修行期間(本人の自由記述。例: 半年、3年。任意入力、20文字まで)';

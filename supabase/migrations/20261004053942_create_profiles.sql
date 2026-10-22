@@ -12,14 +12,21 @@ create table public.profiles (
   bio          text,
   is_teller    boolean not null default false,
   created_at   timestamptz not null default now(),
-  updated_at   timestamptz not null default now()
+  updated_at   timestamptz not null default now(),
+
+  -- 表示名は空白(半角・全角)だけは不可、20 文字まで
+  constraint profiles_display_name_check
+    check (btrim(display_name, ' 　') <> '' and char_length(display_name) <= 20),
+  -- 自己紹介は任意入力、200 文字まで
+  constraint profiles_bio_check
+    check (bio is null or char_length(bio) <= 200)
 );
 
 comment on table  public.profiles is 'ユーザーの公開プロフィール';
 comment on column public.profiles.id is 'ユーザーID(auth.usersと1:1)';
-comment on column public.profiles.display_name is '表示名';
+comment on column public.profiles.display_name is '表示名(20文字まで)';
 comment on column public.profiles.avatar_url is 'アバター画像URL';
-comment on column public.profiles.bio is '自己紹介文(一般ユーザー向け)';
+comment on column public.profiles.bio is '自己紹介文(一般ユーザー向け。任意入力、200文字まで)';
 comment on column public.profiles.is_teller is '占い師登録の有無(teller_profilesの作成/削除時にトリガーで自動同期。手動更新しない)';
 
 -- 2. updated_at の自動更新 ----------------------------------

@@ -480,6 +480,16 @@ export type Database = {
         Args: { p_platform: string; p_token: string }
         Returns: undefined
       }
+      save_teller_profile: {
+        Args: {
+          p_is_accepting: boolean
+          p_requires_birthdate: boolean
+          p_self_pr: string
+          p_tag_ids: string[]
+          p_training_period: string
+        }
+        Returns: undefined
+      }
       search_tellers: {
         Args: {
           p_accepting_only?: boolean

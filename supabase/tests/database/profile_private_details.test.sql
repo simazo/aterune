@@ -1,5 +1,5 @@
 begin;
-select plan(20);
+select plan(24);
 
 -- ===== テストデータ(postgres 権限)=====
 -- carol=相談者 / bob,erin,fay,gus=占い師 / dave=無関係のユーザー
@@ -141,7 +141,7 @@ select is(
 );
 
 -- gus は見えているだけで、更新はできない(0 行に影響して黙って成功する)
-update public.profile_private_details set gender = 'hacked'
+update public.profile_private_details set gender = 'other'
   where profile_id = '00000000-0000-0000-0000-0000000000c1';
 reset role;
 
@@ -174,16 +174,38 @@ select throws_ok(
      ('00000000-0000-0000-0000-0000000000d3') $$,
   '23505', null, 'profile_id は重複できない(1ユーザー1行)'
 );
+
+-- 19-22. gender は female / male / other か、未回答(NULL)だけ
+select lives_ok(
+  $$ update public.profile_private_details set gender = 'female'
+       where profile_id = '00000000-0000-0000-0000-0000000000d3' $$,
+  'gender に female を設定できる'
+);
+select lives_ok(
+  $$ update public.profile_private_details set gender = 'male'
+       where profile_id = '00000000-0000-0000-0000-0000000000d3' $$,
+  'gender に male を設定できる'
+);
+select lives_ok(
+  $$ update public.profile_private_details set gender = null
+       where profile_id = '00000000-0000-0000-0000-0000000000d3' $$,
+  'gender は未回答(NULL)にできる'
+);
+select throws_ok(
+  $$ update public.profile_private_details set gender = 'unknown'
+       where profile_id = '00000000-0000-0000-0000-0000000000d3' $$,
+  '23514', null, 'gender に決まった値以外は入れられない'
+);
 reset role;
 
 -- ===== 制約(postgres 権限)=====
--- 19. 存在しない profile_id は外部キー違反
+-- 23. 存在しない profile_id は外部キー違反
 select throws_ok(
   $$ insert into public.profile_private_details (profile_id) values (gen_random_uuid()) $$,
   '23503', null, '存在しない profile_id は外部キー違反'
 );
 
--- 20. profiles を消すと連鎖削除される
+-- 24. profiles を消すと連鎖削除される
 delete from public.profiles where id = '00000000-0000-0000-0000-0000000000c1';
 select is(
   (select count(*)::int from public.profile_private_details where profile_id = '00000000-0000-0000-0000-0000000000c1'),

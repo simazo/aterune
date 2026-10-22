@@ -5,13 +5,17 @@ create table public.profile_private_details (
   birthdate  date,
   gender     text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+
+  -- 「回答しない」は null で表す
+  constraint profile_private_details_gender_check
+    check (gender in ('female', 'male', 'other'))
 );
 
 comment on table  public.profile_private_details            is '非公開のプロフィール情報(profiles と 1:1)';
 comment on column public.profile_private_details.profile_id is '対象ユーザーID(profiles と 1:1)';
 comment on column public.profile_private_details.birthdate  is '生年月日(非公開。セッションの相手の占い師にのみ、条件付きで開示される)';
-comment on column public.profile_private_details.gender     is '性別(非公開)';
+comment on column public.profile_private_details.gender     is '性別(非公開。female=女性、male=男性、other=その他、null=未回答・回答しない。セッションの相手の占い師にのみ、生年月日と同じ条件で開示される)';
 
 create trigger profile_private_details_set_updated_at
   before update on public.profile_private_details
