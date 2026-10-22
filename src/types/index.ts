@@ -75,6 +75,7 @@ export type SessionDetail = Pick<
   | 'concern'
   | 'applicant_message'
   | 'expires_at'
+  | 'completed_at'
   | 'updated_at'
 > & {
   partner_name: string | null;

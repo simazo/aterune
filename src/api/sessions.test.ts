@@ -298,6 +298,7 @@ describe('getSession', () => {
     concern: '仕事の悩み',
     applicant_message: 'よろしくお願いします',
     expires_at: '2026-10-24T03:00:00.000Z',
+    completed_at: null,
     updated_at: '2026-10-22T03:00:00.000Z',
   };
 
@@ -338,7 +339,7 @@ describe('getSession', () => {
 
     expect(mockSupabase.from).toHaveBeenNthCalledWith(1, 'sessions');
     expect(sessionQuery.select).toHaveBeenCalledWith(
-      'id, applicant_id, recipient_id, consultant_id, teller_id, initiated_by, status, concern, applicant_message, expires_at, updated_at'
+      'id, applicant_id, recipient_id, consultant_id, teller_id, initiated_by, status, concern, applicant_message, expires_at, completed_at, updated_at'
     );
     expect(sessionQuery.eq).toHaveBeenCalledWith('id', 'session-1');
     expect(mockSupabase.from).toHaveBeenNthCalledWith(2, 'profiles');

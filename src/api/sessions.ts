@@ -93,7 +93,7 @@ export async function getSession(
   const { data: session, error } = await supabase
     .from('sessions')
     .select(
-      'id, applicant_id, recipient_id, consultant_id, teller_id, initiated_by, status, concern, applicant_message, expires_at, updated_at'
+      'id, applicant_id, recipient_id, consultant_id, teller_id, initiated_by, status, concern, applicant_message, expires_at, completed_at, updated_at'
     )
     .eq('id', sessionId)
     .single();
