@@ -1,5 +1,6 @@
+import { listMessages } from '@/api/messages';
 import { getConsultantPrivateDetails } from '@/api/profile-private-details';
-import { approveSession, getSession, rejectSession } from '@/api/sessions';
+import { approveSession, completeSession, getSession, rejectSession } from '@/api/sessions';
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -11,7 +12,7 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAuth } from '@/hooks/use-auth';
 import { useErrorToast } from '@/hooks/use-error-toast';
-import type { Gender, SessionDetail as SessionDetailData } from '@/types';
+import type { Gender, Message, SessionDetail as SessionDetailData } from '@/types';
 import { canSeeConsultantDetails, isOpenPending } from '@/utils/group-sessions';
 import {
   formatBirthdateWithAge,
@@ -20,24 +21,34 @@ import {
   getEndedLabel,
 } from '@/utils/session-display';
 import { getSessionResponseErrorMessage } from '@/utils/session-response-error';
-import { Stack } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+// 引っ張って更新は gluestack-ui に対応する部品が無いため、React Native の RefreshControl を使う（Web では効かない）
+import { RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { RejectDialog } from './components/reject-dialog';
+import { ConfirmDialog } from './components/confirm-dialog';
+import { MessageList } from './components/message-list';
 
 type ConsultantDetails = {
   birthdate: string | null;
   gender: Gender | null;
 };
 
+type SessionMessage = Pick<Message, 'id' | 'sender_id' | 'content' | 'created_at'>;
+
+// メッセージがありうる状態（承認されたあと）。承認待ち・拒否・期限切れには無いので取りに行かない
+const MESSAGE_STATUSES: SessionDetailData['status'][] = ['active', 'completed', 'auto_completed'];
+
 type Props = {
   sessionId: string;
 };
 
 // セッション詳細。申込まれた側には、期限内の承認待ちのあいだ承認・拒否のボタンを出す。
-// 承認したら画面にとどまり、進行中の表示に切り替える
-// TODO: 仮実装。メッセージの送受信と相談者の完了操作は未対応（次の作業で作る）
+// 承認したら画面にとどまり、進行中の表示に切り替える。
+// 承認後はメッセージを並べ、進行中なら「メッセージを書く」（書く画面へ移る）と、相談者には完了のボタンを出す。
+// 相手のメッセージは、画面が表示されたときと、引っ張って更新したときに読み直す（リアルタイムでは受け取らない）
 export function SessionDetail({ sessionId }: Props) {
+  const router = useRouter();
   const showError = useErrorToast();
   const { session: authSession } = useAuth();
   const userId = authSession?.user.id;
@@ -45,15 +56,23 @@ export function SessionDetail({ sessionId }: Props) {
   const [session, setSession] = useState<SessionDetailData | null>(null);
   // 見てよい状態で、行が無い（未登録）なら null。見てよい状態でない・自分が占い師でないなら undefined
   const [consultantDetails, setConsultantDetails] = useState<ConsultantDetails | null | undefined>();
+  const [messages, setMessages] = useState<SessionMessage[]>([]);
   // 期限の判定と残り時間は、読み込んだ時点の時刻で揃える
   const [loadedAt, setLoadedAt] = useState(() => new Date());
   const [isLoading, setIsLoading] = useState(true);
-  const [submittingAction, setSubmittingAction] = useState<'approve' | 'reject' | null>(null);
-  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [submittingAction, setSubmittingAction] = useState<
+    'approve' | 'reject' | 'complete' | null
+  >(null);
+  const [openDialog, setOpenDialog] = useState<'reject' | 'complete' | null>(null);
+  // 最後に読み込みを始めたセッションの ID。別のセッションに切り替わったときだけ、読み込み中の表示にする
+  const loadingSessionIdRef = useRef<string | null>(null);
+  // 書く画面へ移る途中か。ボタンを素早く何度も押すと、書く画面が重なって開くのを防ぐ
+  const isNavigatingRef = useRef(false);
 
-  // セッションと（見てよい状態なら）相談者の情報を読み込む。
+  // セッションと、（見てよい状態なら）相談者の情報・（承認後なら）メッセージを読み込む。
   // isCancelled が true を返したら結果を捨てる（別のセッションへ素早く切り替えたとき、古い結果で上書きしない）。
-  // 承認・拒否のあとの読み直しで失敗したときは、表示中の内容を残してトーストだけ出す
+  // 読み直しで失敗したときは、表示中の内容を残してトーストだけ出す
   const load = useCallback(
     async (isCancelled: () => boolean = () => false) => {
       // (app) のレイアウトがログイン済みを保証しているので、userId が無いことは無い
@@ -66,12 +85,21 @@ export function SessionDetail({ sessionId }: Props) {
         return;
       }
 
-      let details: ConsultantDetails | null | undefined;
-      if (data.teller_id === userId && canSeeConsultantDetails(data, now)) {
-        const result = await getConsultantPrivateDetails(data.consultant_id);
-        if (isCancelled()) return;
-        // 取れなくても詳細は見られるようにする（相談者の情報だけ「表示できません」にする）
-        details = result.error ? undefined : result.data;
+      const shouldLoadDetails = data.teller_id === userId && canSeeConsultantDetails(data, now);
+      const shouldLoadMessages = MESSAGE_STATUSES.includes(data.status);
+      const [detailsResult, messagesResult] = await Promise.all([
+        shouldLoadDetails ? getConsultantPrivateDetails(data.consultant_id) : null,
+        shouldLoadMessages ? listMessages(sessionId) : null,
+      ]);
+      if (isCancelled()) return;
+
+      // 取れなくても詳細は見られるようにする（相談者の情報だけ「表示できません」にする）
+      const details = detailsResult && !detailsResult.error ? detailsResult.data : undefined;
+      if (messagesResult?.error) {
+        // メッセージだけ読めなかったときは、表示中のメッセージを残す
+        showError('メッセージを読み込めませんでした');
+      } else {
+        setMessages(messagesResult?.data ?? []);
       }
 
       setSession(data);
@@ -83,21 +111,43 @@ export function SessionDetail({ sessionId }: Props) {
     [sessionId, userId]
   );
 
-  useEffect(() => {
-    let isCancelled = false;
+  // 書く画面から戻ったときに送ったメッセージを出すため、画面が表示されるたびに読み直す
+  useFocusEffect(
+    useCallback(() => {
+      // 戻ってきたら、また書く画面へ移れるようにする
+      isNavigatingRef.current = false;
+      let isCancelled = false;
+      const isSwitched = loadingSessionIdRef.current !== sessionId;
+      loadingSessionIdRef.current = sessionId;
 
-    (async () => {
-      setIsLoading(true);
-      // 前のセッションの内容を残さない（読み込みに失敗したら「表示できませんでした」にする）
-      setSession(null);
-      await load(() => isCancelled);
-      if (!isCancelled) setIsLoading(false);
-    })();
+      (async () => {
+        if (isSwitched) {
+          setIsLoading(true);
+          // 前のセッションの内容を残さない（読み込みに失敗したら「表示できませんでした」にする）
+          setSession(null);
+          setMessages([]);
+        }
+        await load(() => isCancelled);
+        if (!isCancelled) setIsLoading(false);
+      })();
 
-    return () => {
-      isCancelled = true;
-    };
-  }, [load]);
+      return () => {
+        isCancelled = true;
+      };
+    }, [load, sessionId])
+  );
+
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    await load();
+    setIsRefreshing(false);
+  }
+
+  function handleWriteMessage() {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    router.push({ pathname: '/sessions/[id]/message', params: { id: sessionId } });
+  }
 
   async function handleApprove() {
     setSubmittingAction('approve');
@@ -114,7 +164,17 @@ export function SessionDetail({ sessionId }: Props) {
     if (error) showError(getSessionResponseErrorMessage(error));
     await load();
     setSubmittingAction(null);
-    setIsRejectDialogOpen(false);
+    setOpenDialog(null);
+  }
+
+  async function handleComplete() {
+    setSubmittingAction('complete');
+    const { error } = await completeSession(sessionId);
+    if (error) showError(getSessionResponseErrorMessage(error));
+    // 成功なら完了に、すでに終わっていれば最新の状態に変わる
+    await load();
+    setSubmittingAction(null);
+    setOpenDialog(null);
   }
 
   const partnerName = session ? (session.partner_name ?? '退会したユーザー') : '';
@@ -159,6 +219,9 @@ export function SessionDetail({ sessionId }: Props) {
   const showsConsultantDetails =
     isTeller && (canSeeConsultantDetails(session, loadedAt) || isWaitingConsultantConsent);
   const canRespond = isPendingOpen && session.recipient_id === userId;
+  const isActive = session.status === 'active';
+  // 完了できるのは相談者だけ（DB も相談者以外の完了を弾く）
+  const canComplete = isActive && !isTeller;
   const statusLabel = isPendingOpen
     ? canRespond
       ? 'あなたの返事待ち'
@@ -171,7 +234,11 @@ export function SessionDetail({ sessionId }: Props) {
     <VStack className="flex-1 bg-background">
       {header}
 
-      <ScrollView className="flex-1" contentContainerClassName="p-4">
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="p-4"
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />}
+      >
         {/* 広い画面（Web）で横に間延びしないよう、幅を抑えて中央に置く */}
         <VStack space="lg" className="w-full max-w-2xl self-center">
           <Card>
@@ -189,6 +256,16 @@ export function SessionDetail({ sessionId }: Props) {
               <Text size="sm" className="text-muted-foreground">
                 {isTeller ? 'あなたは占い師として参加しています' : 'あなたは相談者として参加しています'}
               </Text>
+              {canComplete && (
+                <Button
+                  variant="outline"
+                  className="mt-2 self-start bg-card"
+                  isDisabled={submittingAction !== null}
+                  onPress={() => setOpenDialog('complete')}
+                >
+                  <ButtonText>相談を完了する</ButtonText>
+                </Button>
+              )}
             </VStack>
           </Card>
 
@@ -238,12 +315,16 @@ export function SessionDetail({ sessionId }: Props) {
             </Card>
           )}
 
-          {session.status === 'active' && (
-            <Card>
-              <Text size="sm" className="text-muted-foreground">
-                メッセージのやり取りは準備中です
-              </Text>
-            </Card>
+          {MESSAGE_STATUSES.includes(session.status) && (
+            <VStack space="md">
+              <Heading size="md">メッセージ</Heading>
+              <MessageList messages={messages} userId={userId} partnerName={partnerName} />
+              {!isActive && (
+                <Text size="sm" className="text-center text-muted-foreground">
+                  このセッションは終了しているため、メッセージは送れません
+                </Text>
+              )}
+            </VStack>
           )}
         </VStack>
       </ScrollView>
@@ -260,7 +341,7 @@ export function SessionDetail({ sessionId }: Props) {
               variant="outline"
               className="flex-1 bg-card"
               isDisabled={submittingAction !== null}
-              onPress={() => setIsRejectDialogOpen(true)}
+              onPress={() => setOpenDialog('reject')}
             >
               <ButtonText>お断りする</ButtonText>
             </Button>
@@ -277,11 +358,41 @@ export function SessionDetail({ sessionId }: Props) {
         </VStack>
       )}
 
-      <RejectDialog
-        isOpen={isRejectDialogOpen}
+      {isActive && (
+        // 画面下に固定する（入力欄ではなく、書く画面へ移るボタンなのでキーボードには関わらない）
+        <VStack
+          className="border-t border-border bg-card px-4 pt-3"
+          style={{ paddingBottom: insets.bottom + 12 }}
+        >
+          <Button
+            size="lg"
+            className="w-full max-w-2xl self-center"
+            isDisabled={submittingAction !== null}
+            onPress={handleWriteMessage}
+          >
+            <ButtonText>メッセージを書く</ButtonText>
+          </Button>
+        </VStack>
+      )}
+
+      <ConfirmDialog
+        isOpen={openDialog === 'reject'}
+        title="この申込みをお断りしますか？"
+        description="お断りすると元に戻せません。相手には結果が通知されます。"
+        confirmLabel="お断りする"
+        confirmVariant="destructive"
         isSubmitting={submittingAction === 'reject'}
-        onClose={() => setIsRejectDialogOpen(false)}
+        onClose={() => setOpenDialog(null)}
         onConfirm={handleReject}
+      />
+      <ConfirmDialog
+        isOpen={openDialog === 'complete'}
+        title="相談を完了しますか？"
+        description="完了すると元に戻せず、メッセージも送れなくなります。これまでのメッセージは読めます。"
+        confirmLabel="完了する"
+        isSubmitting={submittingAction === 'complete'}
+        onClose={() => setOpenDialog(null)}
+        onConfirm={handleComplete}
       />
     </VStack>
   );
