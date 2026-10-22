@@ -81,6 +81,15 @@ export type SessionDetail = Pick<
   partner_name: string | null;
 };
 
+// お悩み一覧・投稿の詳細に出す投稿（list_consultation_posts / get_consultation_post の結果の1行）。
+// 投稿者を匿名にするため consultant_id を含まない。is_mine は自分の投稿か、has_applied は自分が応募済みか
+export type ConsultationPostListItem =
+  Database['public']['Functions']['list_consultation_posts']['Returns'][number];
+
+// 自分のお悩み投稿（list_my_consultation_posts の結果の1行。閉じた投稿も含む）
+export type MyConsultationPost =
+  Database['public']['Functions']['list_my_consultation_posts']['Returns'][number];
+
 // get_teller の結果（占い師詳細）。上書きの理由は TellerSearchResult と同じ
 type GetTellerRow = Database['public']['Functions']['get_teller']['Returns'][number];
 export type TellerDetail = Omit<
