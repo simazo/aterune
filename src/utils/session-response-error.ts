@@ -2,12 +2,16 @@
 // api/sessions.ts が返すエラー文。api と画面の両方で使うため、外部に依存しない utils に置く
 export const SESSION_ALREADY_HANDLED_MESSAGE = 'the session request has already been handled';
 
-// 申込みの承認・拒否が失敗したときのエラー文（error.message）ごとの日本語の文言。
+// 完了で、更新できる進行中の行が無かったとき（すでに完了・自動完了しているなど）に api/sessions.ts が返すエラー文
+export const SESSION_ALREADY_ENDED_MESSAGE = 'the session has already ended';
+
+// 申込みの承認・拒否と、セッションの完了が失敗したときのエラー文（error.message）ごとの日本語の文言。
 // 期限切れの文は supabase/migrations/20261009214623_create_sessions.sql の guard_session_status_change と合わせる
-// （承認・拒否とも同じ文）。処理済みは api/sessions.ts が更新した行が無いときに返す
+// （承認・拒否とも同じ文）。処理済み・終了済みは api/sessions.ts が更新した行が無いときに返す
 const SESSION_RESPONSE_ERROR_MESSAGES: Record<string, string> = {
   'the session request has expired': '申込みの期限が切れています',
   [SESSION_ALREADY_HANDLED_MESSAGE]: 'この申込みはすでに処理されています',
+  [SESSION_ALREADY_ENDED_MESSAGE]: 'このセッションはすでに終了しています',
 };
 
 // 分からないエラーや、通信エラーなどの場合の文言

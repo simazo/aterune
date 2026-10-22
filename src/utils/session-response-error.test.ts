@@ -1,5 +1,6 @@
 import {
   getSessionResponseErrorMessage,
+  SESSION_ALREADY_ENDED_MESSAGE,
   SESSION_ALREADY_HANDLED_MESSAGE,
 } from './session-response-error';
 
@@ -9,6 +10,7 @@ describe('getSessionResponseErrorMessage', () => {
   test.each([
     ['the session request has expired', '申込みの期限が切れています'],
     [SESSION_ALREADY_HANDLED_MESSAGE, 'この申込みはすでに処理されています'],
+    [SESSION_ALREADY_ENDED_MESSAGE, 'このセッションはすでに終了しています'],
   ])('エラーが「%s」なら対応する日本語の文言を返す', (message, expected) => {
     expect(getSessionResponseErrorMessage({ message })).toBe(expected);
   });

@@ -1,6 +1,9 @@
 import { supabase } from '@/lib/supabase';
 import type { SessionDetail, SessionListItem } from '@/types';
-import { SESSION_ALREADY_HANDLED_MESSAGE } from '@/utils/session-response-error';
+import {
+  SESSION_ALREADY_ENDED_MESSAGE,
+  SESSION_ALREADY_HANDLED_MESSAGE,
+} from '@/utils/session-response-error';
 
 type CreateSessionRequestParams = {
   consultantId: string;
@@ -109,28 +112,38 @@ export async function getSession(
   return { data: { ...session, partner_name: profile?.display_name ?? null }, error: null };
 }
 
-// 承認待ちのセッションの status を変える。承認待ちの条件を付けて更新し、更新した行が無ければ処理済みのエラーにする
-// （RLS の update は対象の行が無くてもエラーにならないため）。
-// 申込まれた側以外の操作・期限切れの承認と拒否は DB のトリガー（guard_session_status_change）が弾く
-async function updatePendingSessionStatus(sessionId: string, status: 'active' | 'rejected') {
+// セッションの status を from から to に変える。from の条件を付けて更新し、更新した行が無ければ
+// notUpdatedMessage のエラーにする（RLS の update は対象の行が無くてもエラーにならないため）。
+// 誰がどの遷移をできるか・期限は DB のトリガー（guard_session_status_change）が弾く
+async function updateSessionStatus(
+  sessionId: string,
+  from: 'pending' | 'active',
+  to: 'active' | 'rejected' | 'completed',
+  notUpdatedMessage: string
+) {
   const { data, error } = await supabase
     .from('sessions')
-    .update({ status })
+    .update({ status: to })
     .eq('id', sessionId)
-    .eq('status', 'pending')
+    .eq('status', from)
     .select('id');
 
   if (error) return { error };
-  if (data.length === 0) return { error: { message: SESSION_ALREADY_HANDLED_MESSAGE } };
+  if (data.length === 0) return { error: { message: notUpdatedMessage } };
   return { error: null };
 }
 
-// 申込みを承認する（申込まれた側だけ）
+// 申込みを承認する（申込まれた側だけ。期限切れは DB が弾く）
 export async function approveSession(sessionId: string) {
-  return updatePendingSessionStatus(sessionId, 'active');
+  return updateSessionStatus(sessionId, 'pending', 'active', SESSION_ALREADY_HANDLED_MESSAGE);
 }
 
-// 申込みを拒否する（申込まれた側だけ）
+// 申込みを拒否する（申込まれた側だけ。期限切れは DB が弾く）
 export async function rejectSession(sessionId: string) {
-  return updatePendingSessionStatus(sessionId, 'rejected');
+  return updateSessionStatus(sessionId, 'pending', 'rejected', SESSION_ALREADY_HANDLED_MESSAGE);
+}
+
+// 進行中のセッションを完了にする（相談者だけ）
+export async function completeSession(sessionId: string) {
+  return updateSessionStatus(sessionId, 'active', 'completed', SESSION_ALREADY_ENDED_MESSAGE);
 }

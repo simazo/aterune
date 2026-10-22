@@ -1,7 +1,11 @@
 import { supabase } from '@/lib/supabase';
-import { SESSION_ALREADY_HANDLED_MESSAGE } from '@/utils/session-response-error';
+import {
+  SESSION_ALREADY_ENDED_MESSAGE,
+  SESSION_ALREADY_HANDLED_MESSAGE,
+} from '@/utils/session-response-error';
 import {
   approveSession,
+  completeSession,
   createSessionRequest,
   getSession,
   hasOpenSessionWithTeller,
@@ -420,6 +424,38 @@ describe.each([
     mockStatusUpdateQuery({ data: null, error });
 
     const result = await fn('session-1');
+
+    expect(result).toEqual({ error });
+  });
+});
+
+describe('completeSession', () => {
+  it('進行中のときだけ status を completed に更新する', async () => {
+    const query = mockStatusUpdateQuery({ data: [{ id: 'session-1' }], error: null });
+
+    const result = await completeSession('session-1');
+
+    expect(mockSupabase.from).toHaveBeenCalledWith('sessions');
+    expect(query.update).toHaveBeenCalledWith({ status: 'completed' });
+    expect(query.eq).toHaveBeenCalledWith('id', 'session-1');
+    expect(query.eq).toHaveBeenCalledWith('status', 'active');
+    expect(query.select).toHaveBeenCalledWith('id');
+    expect(result).toEqual({ error: null });
+  });
+
+  it('更新した行が無ければ（すでに完了・自動完了しているなど）終了済みのエラーを返す', async () => {
+    mockStatusUpdateQuery({ data: [], error: null });
+
+    const result = await completeSession('session-1');
+
+    expect(result).toEqual({ error: { message: SESSION_ALREADY_ENDED_MESSAGE } });
+  });
+
+  it('DB に弾かれたら（相談者でないなど）errorをそのまま返す', async () => {
+    const error = { message: 'only the consultant can complete a session' };
+    mockStatusUpdateQuery({ data: null, error });
+
+    const result = await completeSession('session-1');
 
     expect(result).toEqual({ error });
   });
