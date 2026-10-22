@@ -28,6 +28,18 @@ describe('signupSchema', () => {
     );
   });
 
+  it('表示名が21文字ならエラー', () => {
+    expect(firstErrorMessage({ ...validValues, displayName: 'あ'.repeat(21) })).toBe(
+      '表示名は20文字以内で入力してください'
+    );
+  });
+
+  it('表示名が20文字なら通る', () => {
+    expect(signupSchema.safeParse({ ...validValues, displayName: 'あ'.repeat(20) }).success).toBe(
+      true
+    );
+  });
+
   it('表示名の前後のスペースは取り除かれる', () => {
     const result = signupSchema.safeParse({ ...validValues, displayName: ' テストユーザー ' });
 

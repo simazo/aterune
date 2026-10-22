@@ -1,15 +1,57 @@
 import { signOut } from '@/api/auth';
+import { getMyProfile } from '@/api/profiles';
+import { Avatar, AvatarFallbackText, AvatarImage } from '@/components/ui/avatar';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Heading } from '@/components/ui/heading';
+import { HStack } from '@/components/ui/hstack';
+import { ScrollView } from '@/components/ui/scroll-view';
+import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAuth } from '@/hooks/use-auth';
-import { useState } from 'react';
+import { useErrorToast } from '@/hooks/use-error-toast';
+import type { Profile } from '@/types';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
 
-// TODO: 仮実装。ログイン中であることの確認とログアウトのみ。
-// 本実装ではプロフィール、お悩み投稿の一覧などを表示する
+type MyProfile = Pick<Profile, 'display_name' | 'bio' | 'avatar_url' | 'is_teller'>;
+
 export function MyPage() {
+  const router = useRouter();
+  const showError = useErrorToast();
   const { session } = useAuth();
+  const userId = session?.user.id;
+  const [profile, setProfile] = useState<MyProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  // プロフィール編集から戻ったときに新しい内容を出すため、画面が表示されるたびに読み直す
+  useFocusEffect(
+    useCallback(() => {
+      // (app) のレイアウトがログイン済みを保証しているので、userId が無いことは無い
+      if (!userId) return;
+      let isCancelled = false;
+
+      (async () => {
+        const { data, error } = await getMyProfile(userId);
+        if (isCancelled) return;
+
+        if (error) {
+          showError('プロフィールを読み込めませんでした');
+        } else {
+          setProfile(data);
+        }
+        setIsLoading(false);
+      })();
+
+      return () => {
+        isCancelled = true;
+      };
+      // showError は描画ごとに作り直されるため依存に入れない
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [userId])
+  );
 
   async function handleSignOut() {
     setLoading(true);
@@ -17,12 +59,51 @@ export function MyPage() {
     setLoading(false);
   }
 
+  if (isLoading) {
+    return (
+      <VStack className="flex-1 items-center justify-center bg-background">
+        <Spinner size="large" />
+      </VStack>
+    );
+  }
+
   return (
-    <VStack className="flex-1 justify-center bg-background p-6" space="md">
-      <Text size="md">ログイン中: {session?.user.email}</Text>
-      <Button variant="secondary" onPress={handleSignOut} isDisabled={loading}>
-        {loading ? <ButtonSpinner /> : <ButtonText>ログアウト</ButtonText>}
-      </Button>
-    </VStack>
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4">
+      {/* 広い画面（Web）で横に間延びしないよう、幅を抑えて中央に置く */}
+      <VStack className="w-full max-w-2xl self-center" space="lg">
+        {profile ? (
+          <Card>
+            <VStack space="md">
+              <HStack className="items-center" space="md">
+                <Avatar size="lg">
+                  <AvatarFallbackText>{profile.display_name}</AvatarFallbackText>
+                  {profile.avatar_url && <AvatarImage source={{ uri: profile.avatar_url }} />}
+                </Avatar>
+                <Heading size="xl" className="flex-1">
+                  {profile.display_name}
+                </Heading>
+              </HStack>
+              {profile.bio && <Text size="md">{profile.bio}</Text>}
+              <Button variant="outline" onPress={() => router.push('/profile/edit')}>
+                <ButtonText>プロフィールを編集</ButtonText>
+              </Button>
+            </VStack>
+          </Card>
+        ) : (
+          <Text size="md" className="text-center text-muted-foreground">
+            プロフィールを表示できませんでした
+          </Text>
+        )}
+
+        <VStack space="sm">
+          <Text size="sm" className="text-muted-foreground">
+            ログイン中: {session?.user.email}
+          </Text>
+          <Button variant="secondary" onPress={handleSignOut} isDisabled={loading}>
+            {loading ? <ButtonSpinner /> : <ButtonText>ログアウト</ButtonText>}
+          </Button>
+        </VStack>
+      </VStack>
+    </ScrollView>
   );
 }

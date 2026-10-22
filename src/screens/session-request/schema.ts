@@ -1,11 +1,5 @@
-import { parseDateString, toDateString } from '@/utils/date';
+import { getTodayString, parseDateString } from '@/utils/date';
 import { z } from 'zod';
-
-// 端末の日付で今日を 'YYYY-MM-DD' にする（同じ形の文字列どうしなら、文字列の比較で日付の前後が分かる）
-function getTodayString() {
-  const now = new Date();
-  return toDateString(now.getFullYear(), now.getMonth() + 1, now.getDate());
-}
 
 // 生年月日は年・月・日の Select で選び、3つとも選んだときだけ 'YYYY-MM-DD'、選び途中なら '' が入る
 const birthdateSchema = z

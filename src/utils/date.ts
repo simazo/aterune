@@ -28,3 +28,9 @@ export function parseDateString(value: string) {
 
   return { year, month, day };
 }
+
+// 端末の日付で今日を 'YYYY-MM-DD' にする（同じ形の文字列どうしなら、文字列の比較で日付の前後が分かる）
+export function getTodayString() {
+  const now = new Date();
+  return toDateString(now.getFullYear(), now.getMonth() + 1, now.getDate());
+}

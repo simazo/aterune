@@ -25,7 +25,7 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { buildSessionRequestSchema, type SessionRequestFormValues } from '../schema';
-import { BirthdateSelect } from './birthdate-select';
+import { BirthdateSelect } from '@/components/birthdate-select';
 
 type Props = {
   teller: TellerDetail;

@@ -1,4 +1,4 @@
-import { getMaxDay, parseDateString, toDateString } from './date';
+import { getMaxDay, getTodayString, parseDateString, toDateString } from './date';
 
 describe('getMaxDay', () => {
   it('月が未選択なら31を返す', () => {
@@ -57,5 +57,17 @@ describe('parseDateString', () => {
     expect(parseDateString('')).toBeNull();
     expect(parseDateString('1990/01/05')).toBeNull();
     expect(parseDateString('1990-1-5')).toBeNull();
+  });
+});
+
+describe('getTodayString', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('端末の日付で今日を YYYY-MM-DD にする', () => {
+    jest.useFakeTimers({ now: new Date(2026, 0, 5, 23, 59, 0) });
+
+    expect(getTodayString()).toBe('2026-01-05');
   });
 });
