@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import {
+  getConsultantPrivateDetails,
   getMyBirthdate,
   getMyPrivateDetails,
   saveMyBirthdate,
@@ -214,5 +215,35 @@ describe('saveMyPrivateDetails', () => {
     const result = await saveMyPrivateDetails('user-1', { birthdate: null, gender: null });
 
     expect(result).toEqual({ error });
+  });
+});
+
+describe('getConsultantPrivateDetails', () => {
+  it('セッションの相談者の行から生年月日と性別を取得する', async () => {
+    const query = mockSelectQuery({ data: { birthdate: '1995-04-12', gender: null }, error: null });
+
+    const result = await getConsultantPrivateDetails('consultant-1');
+
+    expect(mockSupabase.from).toHaveBeenCalledWith('profile_private_details');
+    expect(query.select).toHaveBeenCalledWith('birthdate, gender');
+    expect(query.eq).toHaveBeenCalledWith('profile_id', 'consultant-1');
+    expect(result).toEqual({ data: { birthdate: '1995-04-12', gender: null }, error: null });
+  });
+
+  it('RLS で読めない・行が無いときはnullを返す', async () => {
+    mockSelectQuery({ data: null, error: null });
+
+    const result = await getConsultantPrivateDetails('consultant-1');
+
+    expect(result).toEqual({ data: null, error: null });
+  });
+
+  it('呼び出しに失敗したらerrorをそのまま返す', async () => {
+    const error = { message: 'network error' };
+    mockSelectQuery({ data: null, error });
+
+    const result = await getConsultantPrivateDetails('consultant-1');
+
+    expect(result).toEqual({ data: null, error });
   });
 });

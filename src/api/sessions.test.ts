@@ -1,5 +1,13 @@
 import { supabase } from '@/lib/supabase';
-import { createSessionRequest, hasOpenSessionWithTeller, listMySessions } from './sessions';
+import {
+  approveSession,
+  createSessionRequest,
+  getSession,
+  hasOpenSessionWithTeller,
+  listMySessions,
+  rejectSession,
+  SESSION_ALREADY_HANDLED_MESSAGE,
+} from './sessions';
 
 jest.mock('@/lib/supabase', () => ({
   supabase: { from: jest.fn() },
@@ -271,5 +279,148 @@ describe('listMySessions', () => {
     const result = await listMySessions('user-1');
 
     expect(result).toEqual({ data: null, error });
+  });
+});
+
+describe('getSession', () => {
+  const session = {
+    id: 'session-1',
+    applicant_id: 'consultant-1',
+    recipient_id: 'user-1',
+    consultant_id: 'consultant-1',
+    teller_id: 'user-1',
+    initiated_by: 'consultant',
+    status: 'pending',
+    concern: '仕事の悩み',
+    applicant_message: 'よろしくお願いします',
+    expires_at: '2026-10-24T03:00:00.000Z',
+    updated_at: '2026-10-22T03:00:00.000Z',
+  };
+
+  // from('sessions').select().eq().single() の呼び出しを記録するモック（1回目の from 用）
+  function mockSessionQuery(result: { data: unknown; error: unknown }) {
+    const query = {
+      select: jest.fn(),
+      eq: jest.fn(),
+      single: jest.fn().mockResolvedValue(result),
+    };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    mockSupabase.from.mockReturnValueOnce(query as never);
+    return query;
+  }
+
+  // from('profiles').select().eq().maybeSingle() の呼び出しを記録するモック（2回目の from 用）
+  function mockPartnerProfileQuery(result: { data: unknown; error: unknown }) {
+    const query = {
+      select: jest.fn(),
+      eq: jest.fn(),
+      maybeSingle: jest.fn().mockResolvedValue(result),
+    };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    mockSupabase.from.mockReturnValueOnce(query as never);
+    return query;
+  }
+
+  it('セッションを1件取得し、相手（自分でない側）の表示名を付けて返す', async () => {
+    const sessionQuery = mockSessionQuery({ data: session, error: null });
+    const profileQuery = mockPartnerProfileQuery({
+      data: { display_name: 'さくら' },
+      error: null,
+    });
+
+    const result = await getSession('session-1', 'user-1');
+
+    expect(mockSupabase.from).toHaveBeenNthCalledWith(1, 'sessions');
+    expect(sessionQuery.select).toHaveBeenCalledWith(
+      'id, applicant_id, recipient_id, consultant_id, teller_id, initiated_by, status, concern, applicant_message, expires_at, updated_at'
+    );
+    expect(sessionQuery.eq).toHaveBeenCalledWith('id', 'session-1');
+    expect(mockSupabase.from).toHaveBeenNthCalledWith(2, 'profiles');
+    expect(profileQuery.select).toHaveBeenCalledWith('display_name');
+    expect(profileQuery.eq).toHaveBeenCalledWith('id', 'consultant-1');
+    expect(result).toEqual({ data: { ...session, partner_name: 'さくら' }, error: null });
+  });
+
+  it('自分が申込んだ側なら、申込まれた側を相手にする', async () => {
+    mockSessionQuery({
+      data: { ...session, applicant_id: 'user-1', recipient_id: 'consultant-1' },
+      error: null,
+    });
+    const profileQuery = mockPartnerProfileQuery({ data: null, error: null });
+
+    const result = await getSession('session-1', 'user-1');
+
+    expect(profileQuery.eq).toHaveBeenCalledWith('id', 'consultant-1');
+    expect(result.data?.partner_name).toBeNull();
+  });
+
+  it('セッションの取得に失敗したら（見つからない・RLS で読めないときも）dataをnullにしてerrorを返す', async () => {
+    const error = { message: 'JSON object requested, multiple (or no) rows returned' };
+    mockSessionQuery({ data: null, error });
+
+    const result = await getSession('session-1', 'user-1');
+
+    expect(mockSupabase.from).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ data: null, error });
+  });
+
+  it('相手のプロフィールの取得に失敗したらdataをnullにしてerrorを返す', async () => {
+    const error = { message: 'network error' };
+    mockSessionQuery({ data: session, error: null });
+    mockPartnerProfileQuery({ data: null, error });
+
+    const result = await getSession('session-1', 'user-1');
+
+    expect(result).toEqual({ data: null, error });
+  });
+});
+
+// from('sessions').update().eq().eq().select() の呼び出しを記録するモック
+function mockStatusUpdateQuery(result: { data: unknown; error: unknown }) {
+  const query = {
+    update: jest.fn(),
+    eq: jest.fn(),
+    select: jest.fn().mockResolvedValue(result),
+  };
+  query.update.mockReturnValue(query);
+  query.eq.mockReturnValue(query);
+  mockSupabase.from.mockReturnValueOnce(query as never);
+  return query;
+}
+
+describe.each([
+  { name: 'approveSession', fn: approveSession, status: 'active' },
+  { name: 'rejectSession', fn: rejectSession, status: 'rejected' },
+])('$name', ({ fn, status }) => {
+  it(`承認待ちのときだけ status を ${status} に更新する`, async () => {
+    const query = mockStatusUpdateQuery({ data: [{ id: 'session-1' }], error: null });
+
+    const result = await fn('session-1');
+
+    expect(mockSupabase.from).toHaveBeenCalledWith('sessions');
+    expect(query.update).toHaveBeenCalledWith({ status });
+    expect(query.eq).toHaveBeenCalledWith('id', 'session-1');
+    expect(query.eq).toHaveBeenCalledWith('status', 'pending');
+    expect(query.select).toHaveBeenCalledWith('id');
+    expect(result).toEqual({ error: null });
+  });
+
+  it('更新した行が無ければ（相手が先に処理した・承認待ちでないなど）処理済みのエラーを返す', async () => {
+    mockStatusUpdateQuery({ data: [], error: null });
+
+    const result = await fn('session-1');
+
+    expect(result).toEqual({ error: { message: SESSION_ALREADY_HANDLED_MESSAGE } });
+  });
+
+  it('DB に弾かれたらerrorをそのまま返す', async () => {
+    const error = { message: 'the session request has expired' };
+    mockStatusUpdateQuery({ data: null, error });
+
+    const result = await fn('session-1');
+
+    expect(result).toEqual({ error });
   });
 });

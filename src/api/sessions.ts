@@ -1,5 +1,8 @@
 import { supabase } from '@/lib/supabase';
-import type { SessionListItem } from '@/types';
+import type { SessionDetail, SessionListItem } from '@/types';
+
+// 承認・拒否で、更新できる承認待ちの行が無かったとき（相手が先に処理した、すでに処理済みなど）のエラー文
+export const SESSION_ALREADY_HANDLED_MESSAGE = 'the session request has already been handled';
 
 type CreateSessionRequestParams = {
   consultantId: string;
@@ -78,4 +81,58 @@ export async function listMySessions(
     data: sessions.map((s) => ({ ...s, partner_name: nameById.get(partnerIdOf(s)) ?? null })),
     error: null,
   };
+}
+
+// セッションを1件（セッション詳細）取得し、相手（自分でない側）の表示名を付ける。
+// 見つからない・RLS で読めない（自分のセッションでない）ときは single() がエラーを返す
+export async function getSession(
+  sessionId: string,
+  userId: string
+): Promise<{ data: SessionDetail | null; error: unknown }> {
+  const { data: session, error } = await supabase
+    .from('sessions')
+    .select(
+      'id, applicant_id, recipient_id, consultant_id, teller_id, initiated_by, status, concern, applicant_message, expires_at, updated_at'
+    )
+    .eq('id', sessionId)
+    .single();
+
+  if (error) return { data: null, error };
+
+  const partnerId = session.applicant_id === userId ? session.recipient_id : session.applicant_id;
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('display_name')
+    .eq('id', partnerId)
+    .maybeSingle();
+
+  if (profileError) return { data: null, error: profileError };
+
+  return { data: { ...session, partner_name: profile?.display_name ?? null }, error: null };
+}
+
+// 承認待ちのセッションの status を変える。承認待ちの条件を付けて更新し、更新した行が無ければ処理済みのエラーにする
+// （RLS の update は対象の行が無くてもエラーにならないため）。
+// 申込まれた側以外の操作・期限切れの承認は DB のトリガー（guard_session_status_change）が弾く
+async function updatePendingSessionStatus(sessionId: string, status: 'active' | 'rejected') {
+  const { data, error } = await supabase
+    .from('sessions')
+    .update({ status })
+    .eq('id', sessionId)
+    .eq('status', 'pending')
+    .select('id');
+
+  if (error) return { error };
+  if (data.length === 0) return { error: { message: SESSION_ALREADY_HANDLED_MESSAGE } };
+  return { error: null };
+}
+
+// 申込みを承認する（申込まれた側だけ）
+export async function approveSession(sessionId: string) {
+  return updatePendingSessionStatus(sessionId, 'active');
+}
+
+// 申込みを拒否する（申込まれた側だけ）
+export async function rejectSession(sessionId: string) {
+  return updatePendingSessionStatus(sessionId, 'rejected');
 }

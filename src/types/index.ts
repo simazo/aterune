@@ -62,6 +62,24 @@ export type SessionListItem = Pick<
   partner_name: string | null;
 };
 
+// セッション詳細に出すセッション（getSession の結果）。partner_name は SessionListItem と同じ
+export type SessionDetail = Pick<
+  Session,
+  | 'id'
+  | 'applicant_id'
+  | 'recipient_id'
+  | 'consultant_id'
+  | 'teller_id'
+  | 'initiated_by'
+  | 'status'
+  | 'concern'
+  | 'applicant_message'
+  | 'expires_at'
+  | 'updated_at'
+> & {
+  partner_name: string | null;
+};
+
 // get_teller の結果（占い師詳細）。上書きの理由は TellerSearchResult と同じ
 type GetTellerRow = Database['public']['Functions']['get_teller']['Returns'][number];
 export type TellerDetail = Omit<

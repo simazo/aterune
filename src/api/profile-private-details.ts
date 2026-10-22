@@ -50,6 +50,20 @@ export async function getMyPrivateDetails(userId: string) {
   return { data: data as PrivateDetails | null, error };
 }
 
+// セッションの相談者の生年月日と性別を取得する（占い師がセッション詳細で見る）。
+// 読めるかどうかは RLS（profile_private_details_select_teller_of_session）が決め、
+// 占い師から応募して未承認の申込み・拒否・期限切れでは行が返らず data は null になる
+export async function getConsultantPrivateDetails(consultantId: string) {
+  const { data, error } = await supabase
+    .from('profile_private_details')
+    .select('birthdate, gender')
+    .eq('profile_id', consultantId)
+    .maybeSingle();
+
+  // 上書きの理由は getMyPrivateDetails と同じ
+  return { data: data as PrivateDetails | null, error };
+}
+
 // 自分の生年月日と性別を保存する。null は未入力（性別は「回答しない」）。
 // 行が無いときの扱いと、同時に保存したときの注意は saveMyBirthdate と同じ
 export async function saveMyPrivateDetails(userId: string, { birthdate, gender }: PrivateDetails) {
