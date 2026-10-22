@@ -1,4 +1,4 @@
-import type { SessionListItem } from '@/types';
+import type { SessionDetail, SessionListItem } from '@/types';
 
 // やり取りタブで見ている側（相談者として／占い師として）
 export type SessionRole = 'consultant' | 'teller';
@@ -13,9 +13,29 @@ export type SessionSections = {
   ended: SessionListItem[];
 };
 
+// 期限内の承認待ちか（承認・拒否できる状態か）。
+// 期限ちょうどは、DB の承認・拒否のチェック（expires_at < now() なら弾く）より1瞬早く切れ扱いにして、承認できない申込みを出さない
+export function isOpenPending(session: Pick<SessionListItem, 'status' | 'expires_at'>, now: Date) {
+  return session.status === 'pending' && new Date(session.expires_at) > now;
+}
+
+// 占い師が、このセッションの相談者の生年月日・性別を見てよいか（相談者の同意がある状態か）。
+// RLS（profile_private_details_select_teller_of_session）は相談者と占い師の組で判定し、セッション単位では絞らず、
+// 承認待ちの期限も見ないため、画面ではこのセッションの状態で確かめてから取得・表示する
+export function canSeeConsultantDetails(
+  session: Pick<SessionDetail, 'status' | 'expires_at' | 'initiated_by'>,
+  now: Date
+) {
+  return (
+    session.status === 'active' ||
+    session.status === 'completed' ||
+    session.status === 'auto_completed' ||
+    (isOpenPending(session, now) && session.initiated_by === 'consultant')
+  );
+}
+
 // 自分のセッションのうち、指定した側のものをやり取りタブのセクションに仕分ける（並び順は元のまま）。
-// 期限切れの pending を expired に更新する定期処理がまだ無いため、期限を過ぎた pending は期限切れとして「終了」に入れる。
-// 期限ちょうどは、DB の承認のチェック（expires_at < now() なら弾く）より1瞬早く切れ扱いにして、承認できない申込みを出さない
+// 期限切れの pending を expired に更新する定期処理がまだ無いため、期限を過ぎた pending は期限切れとして「終了」に入れる
 export function groupSessions(
   sessions: SessionListItem[],
   userId: string,
@@ -33,7 +53,7 @@ export function groupSessions(
     const myId = role === 'consultant' ? session.consultant_id : session.teller_id;
     if (myId !== userId) continue;
 
-    if (session.status === 'pending' && new Date(session.expires_at) > now) {
+    if (isOpenPending(session, now)) {
       if (session.recipient_id === userId) {
         sections.awaitingMyReply.push(session);
       } else {

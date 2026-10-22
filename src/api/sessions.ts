@@ -1,8 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { SessionDetail, SessionListItem } from '@/types';
-
-// 承認・拒否で、更新できる承認待ちの行が無かったとき（相手が先に処理した、すでに処理済みなど）のエラー文
-export const SESSION_ALREADY_HANDLED_MESSAGE = 'the session request has already been handled';
+import { SESSION_ALREADY_HANDLED_MESSAGE } from '@/utils/session-response-error';
 
 type CreateSessionRequestParams = {
   consultantId: string;

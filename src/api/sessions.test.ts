@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { SESSION_ALREADY_HANDLED_MESSAGE } from '@/utils/session-response-error';
 import {
   approveSession,
   createSessionRequest,
@@ -6,7 +7,6 @@ import {
   hasOpenSessionWithTeller,
   listMySessions,
   rejectSession,
-  SESSION_ALREADY_HANDLED_MESSAGE,
 } from './sessions';
 
 jest.mock('@/lib/supabase', () => ({
