@@ -45,6 +45,23 @@ export type TellerSearchResult = Omit<
 // 占い師詳細に出すレビュー（listTellerReviews の結果。レビューした相談者は匿名にするため reviewer_id を含めない）
 export type TellerReview = Pick<Review, 'id' | 'rating' | 'comment' | 'created_at'>;
 
+// やり取りタブの一覧に出すセッション（listMySessions の結果）。
+// partner_name は相手（自分でない側）の表示名。プロフィールが見つからなければ null
+export type SessionListItem = Pick<
+  Session,
+  | 'id'
+  | 'applicant_id'
+  | 'recipient_id'
+  | 'consultant_id'
+  | 'teller_id'
+  | 'status'
+  | 'concern'
+  | 'expires_at'
+  | 'updated_at'
+> & {
+  partner_name: string | null;
+};
+
 // get_teller の結果（占い師詳細）。上書きの理由は TellerSearchResult と同じ
 type GetTellerRow = Database['public']['Functions']['get_teller']['Returns'][number];
 export type TellerDetail = Omit<

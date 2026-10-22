@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import type { SessionListItem } from '@/types';
 
 type CreateSessionRequestParams = {
   consultantId: string;
@@ -43,4 +44,38 @@ export async function hasOpenSessionWithTeller(consultantId: string, tellerId: s
     .limit(1);
 
   return { data: data ? data.length > 0 : null, error };
+}
+
+// 自分が申込んだ側か申込まれた側のセッション（やり取りタブの一覧）を、更新の新しい順に取得する。
+// sessions の外部キーは auth.users を指していて profiles と結合できないため、相手の表示名は profiles から別に取る
+export async function listMySessions(
+  userId: string
+): Promise<{ data: SessionListItem[] | null; error: unknown }> {
+  const { data: sessions, error } = await supabase
+    .from('sessions')
+    .select(
+      'id, applicant_id, recipient_id, consultant_id, teller_id, status, concern, expires_at, updated_at'
+    )
+    .or(`applicant_id.eq.${userId},recipient_id.eq.${userId}`)
+    .order('updated_at', { ascending: false });
+
+  if (error) return { data: null, error };
+  if (sessions.length === 0) return { data: [], error: null };
+
+  const partnerIdOf = (s: (typeof sessions)[number]) =>
+    s.applicant_id === userId ? s.recipient_id : s.applicant_id;
+  const partnerIds = [...new Set(sessions.map(partnerIdOf))];
+
+  const { data: profiles, error: profilesError } = await supabase
+    .from('profiles')
+    .select('id, display_name')
+    .in('id', partnerIds);
+
+  if (profilesError) return { data: null, error: profilesError };
+
+  const nameById = new Map(profiles.map((p) => [p.id, p.display_name]));
+  return {
+    data: sessions.map((s) => ({ ...s, partner_name: nameById.get(partnerIdOf(s)) ?? null })),
+    error: null,
+  };
 }
