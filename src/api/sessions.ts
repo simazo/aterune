@@ -113,7 +113,7 @@ export async function getSession(
 
 // 承認待ちのセッションの status を変える。承認待ちの条件を付けて更新し、更新した行が無ければ処理済みのエラーにする
 // （RLS の update は対象の行が無くてもエラーにならないため）。
-// 申込まれた側以外の操作・期限切れの承認は DB のトリガー（guard_session_status_change）が弾く
+// 申込まれた側以外の操作・期限切れの承認と拒否は DB のトリガー（guard_session_status_change）が弾く
 async function updatePendingSessionStatus(sessionId: string, status: 'active' | 'rejected') {
   const { data, error } = await supabase
     .from('sessions')

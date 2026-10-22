@@ -1,5 +1,5 @@
 begin;
-select plan(67);
+select plan(68);
 
 -- ===== テストデータ(postgres 権限) =====
 -- alice=占い師でもある相談者 / bob=占い師 / carol=占い師ではない一般ユーザー / dave=占い師(完了数・制約用)
@@ -244,6 +244,12 @@ select throws_ok(
 select throws_ok(
   $$ update public.sessions set status = 'active' where id = '00000000-0000-0000-0000-000000000504' $$,
   'P0001', null, '期限切れの pending は承認できない'
+);
+
+-- 68. 期限切れの pending は拒否もできない(定期処理が expired にするまでの間も、承認と同じく弾く)
+select throws_ok(
+  $$ update public.sessions set status = 'rejected' where id = '00000000-0000-0000-0000-000000000504' $$,
+  'P0001', 'the session request has expired', '期限切れの pending は拒否できない'
 );
 reset role;
 

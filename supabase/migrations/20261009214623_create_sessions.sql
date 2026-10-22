@@ -181,7 +181,7 @@ end;
 $$;
 
 -- status 遷移のガード。auth.uid() が null の呼び出し(service_role / 定期処理)はシステム扱い。
---   pending → active / rejected : 申し込まれた側(承認は期限内のみ)
+--   pending → active / rejected : 申し込まれた側(どちらも期限内のみ)
 --   pending → expired           : システムのみ
 --   active  → completed         : 相談者のみ
 --   active  → auto_completed    : システムのみ
@@ -209,6 +209,10 @@ begin
   elsif old.status = 'pending' and new.status = 'rejected' then
     if v_uid is not null and v_uid <> new.recipient_id then
       raise exception 'only the recipient can reject a session request';
+    end if;
+    -- 期限切れの pending は、定期処理が expired にするまでの間も、承認と同じく拒否できない
+    if old.expires_at < now() then
+      raise exception 'the session request has expired';
     end if;
 
   elsif old.status = 'pending' and new.status = 'expired' then
