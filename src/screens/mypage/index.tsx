@@ -95,6 +95,41 @@ export function MyPage() {
           </Text>
         )}
 
+        {profile && userId && (
+          <Card>
+            <VStack space="md">
+              <Heading size="md">占い師として</Heading>
+              {profile.is_teller ? (
+                <>
+                  <Button
+                    variant="outline"
+                    onPress={() => router.push('/teller-profile/edit')}
+                  >
+                    <ButtonText>占い師プロフィールを編集</ButtonText>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onPress={() =>
+                      router.push({ pathname: '/tellers/[id]', params: { id: userId } })
+                    }
+                  >
+                    <ButtonText>自分の占い師ページを見る</ButtonText>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Text size="md">
+                    占い師として登録すると、相談者からの申込みを受けたり、お悩みに応募したりできます
+                  </Text>
+                  <Button onPress={() => router.push('/teller-profile/edit')}>
+                    <ButtonText>占い師として登録する</ButtonText>
+                  </Button>
+                </>
+              )}
+            </VStack>
+          </Card>
+        )}
+
         <VStack space="sm">
           <Text size="sm" className="text-muted-foreground">
             ログイン中: {session?.user.email}
