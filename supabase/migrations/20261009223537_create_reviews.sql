@@ -7,7 +7,8 @@ create table public.reviews (
   rating      smallint not null check (rating between 1 and 5),
   comment     text,
   created_at  timestamptz not null default now(),
-  constraint reviews_no_self_review_check check (reviewer_id <> reviewee_id)
+  constraint reviews_no_self_review_check check (reviewer_id <> reviewee_id),
+  constraint reviews_comment_length_check check (char_length(comment) <= 500)
 );
 
 comment on table  public.reviews             is '相談者から占い師への評価(一方向)';
@@ -16,7 +17,7 @@ comment on column public.reviews.session_id  is '対象セッションID(1セッ
 comment on column public.reviews.reviewer_id is '評価した側のユーザーID(常に相談者)';
 comment on column public.reviews.reviewee_id is '評価された側のユーザーID(常にセッションの占い師)';
 comment on column public.reviews.rating      is '評価点(1〜5の整数)';
-comment on column public.reviews.comment     is '評価コメント(任意)';
+comment on column public.reviews.comment     is '評価コメント(任意、500文字まで)';
 comment on column public.reviews.created_at  is '投稿日時。sessions.completed_at から7日以内のみ投稿可能。投稿後の編集・削除は不可';
 
 -- 占い師ごとの評価の集計・一覧用(session_id の索引は UNIQUE 制約が兼ねる)

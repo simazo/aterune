@@ -1,5 +1,5 @@
 begin;
-select plan(22);
+select plan(24);
 
 -- ===== テストデータ(postgres 権限)=====
 -- carol=相談者 / bob=占い師 / dave=無関係のユーザー
@@ -12,7 +12,7 @@ insert into public.teller_profiles (profile_id) values
   ('00000000-0000-0000-0000-0000000000b2');
 
 -- s1: completed(1日前に完了)/ s2: completed(8日前に完了=期限切れ)/ s3: auto_completed
--- s4: active / s6: completed(seed のレビュー付き)/ s7: completed(未レビュー、制約テスト用)
+-- s4: active / s6: completed(seed のレビュー付き)/ s7・s8: completed(未レビュー、制約テスト用)
 insert into public.sessions
   (id, applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern, status, completed_at)
 select s.id, '00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000b2',
@@ -24,7 +24,8 @@ from (values
   ('00000000-0000-0000-0000-000000000803'::uuid, 's3', 'auto_completed', now()),
   ('00000000-0000-0000-0000-000000000804'::uuid, 's4', 'active',         null),
   ('00000000-0000-0000-0000-000000000806'::uuid, 's6', 'completed',      now() - interval '1 day'),
-  ('00000000-0000-0000-0000-000000000807'::uuid, 's7', 'completed',      now() - interval '1 day')
+  ('00000000-0000-0000-0000-000000000807'::uuid, 's7', 'completed',      now() - interval '1 day'),
+  ('00000000-0000-0000-0000-000000000808'::uuid, 's8', 'completed',      now() - interval '1 day')
 ) as s(id, name, status, completed_at);
 
 -- s6 には評価5の seed レビューがある(→ bob のキャッシュは件数1・平均5.00)
@@ -204,6 +205,22 @@ select throws_ok(
      ('00000000-0000-0000-0000-000000000807', '00000000-0000-0000-0000-0000000000c1',
       '00000000-0000-0000-0000-0000000000b2', null) $$,
   '23502', null, 'rating は NULL にできない'
+);
+
+-- 23. コメントは500文字まで入れられる
+select lives_ok(
+  $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating, comment) values
+     ('00000000-0000-0000-0000-000000000808', '00000000-0000-0000-0000-0000000000c1',
+      '00000000-0000-0000-0000-0000000000b2', 4, repeat('あ', 500)) $$,
+  'comment は500文字まで入れられる'
+);
+
+-- 24. コメントは501文字以上にできない
+select throws_ok(
+  $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating, comment) values
+     ('00000000-0000-0000-0000-000000000807', '00000000-0000-0000-0000-0000000000c1',
+      '00000000-0000-0000-0000-0000000000b2', 4, repeat('あ', 501)) $$,
+  '23514', null, 'comment は501文字以上にできない'
 );
 
 select * from finish();
