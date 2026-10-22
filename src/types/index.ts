@@ -15,6 +15,9 @@ export type PushToken = Tables<'push_tokens'>;
 // tags.category の CHECK 制約と合わせる
 export type TagCategory = 'divination' | 'concern' | 'style';
 
+// profile_private_details.gender の CHECK 制約と合わせる（「回答しない」は null）
+export type Gender = 'female' | 'male' | 'other';
+
 // search_tellers の並び順（DB の enum teller_sort_order）
 export type TellerSortOrder = Enums<'teller_sort_order'>;
 

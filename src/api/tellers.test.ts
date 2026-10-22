@@ -1,8 +1,8 @@
 import { supabase } from '@/lib/supabase';
-import { getTeller, searchTellers } from './tellers';
+import { getMyTellerProfile, getTeller, saveTellerProfile, searchTellers } from './tellers';
 
 jest.mock('@/lib/supabase', () => ({
-  supabase: { rpc: jest.fn() },
+  supabase: { rpc: jest.fn(), from: jest.fn() },
 }));
 
 const mockSupabase = jest.mocked(supabase);
@@ -103,5 +103,140 @@ describe('getTeller', () => {
     const result = await getTeller('teller-1');
 
     expect(result).toEqual({ data: null, error });
+  });
+});
+
+describe('getMyTellerProfile', () => {
+  // from('teller_profiles').select().eq().maybeSingle() の呼び出しを記録するモック
+  function mockSelectQuery(result: { data: unknown; error: unknown }) {
+    const query = {
+      select: jest.fn(),
+      eq: jest.fn(),
+      maybeSingle: jest.fn().mockResolvedValue(result),
+    };
+    query.select.mockReturnValue(query);
+    query.eq.mockReturnValue(query);
+    mockSupabase.from.mockReturnValueOnce(query as never);
+    return query;
+  }
+
+  it('自分の占い師プロフィールを、付いているタグのIDと一緒に取得する', async () => {
+    const query = mockSelectQuery({
+      data: {
+        self_pr: '自己PR',
+        training_period: '半年',
+        requires_birthdate: true,
+        is_accepting: false,
+        teller_tags: [{ tag_id: 'tag-1' }, { tag_id: 'tag-2' }],
+      },
+      error: null,
+    });
+
+    const result = await getMyTellerProfile('user-1');
+
+    expect(mockSupabase.from).toHaveBeenCalledWith('teller_profiles');
+    expect(query.select).toHaveBeenCalledWith(
+      'self_pr, training_period, requires_birthdate, is_accepting, teller_tags(tag_id)'
+    );
+    expect(query.eq).toHaveBeenCalledWith('profile_id', 'user-1');
+    expect(result).toEqual({
+      data: {
+        self_pr: '自己PR',
+        training_period: '半年',
+        requires_birthdate: true,
+        is_accepting: false,
+        tag_ids: ['tag-1', 'tag-2'],
+      },
+      error: null,
+    });
+  });
+
+  it('タグが付いていなければtag_idsを空配列で返す', async () => {
+    mockSelectQuery({
+      data: {
+        self_pr: null,
+        training_period: null,
+        requires_birthdate: false,
+        is_accepting: true,
+        teller_tags: [],
+      },
+      error: null,
+    });
+
+    const result = await getMyTellerProfile('user-1');
+
+    expect(result.data?.tag_ids).toEqual([]);
+  });
+
+  it('占い師として未登録ならnullを返す', async () => {
+    mockSelectQuery({ data: null, error: null });
+
+    const result = await getMyTellerProfile('user-1');
+
+    expect(result).toEqual({ data: null, error: null });
+  });
+
+  it('呼び出しに失敗したらerrorをそのまま返す', async () => {
+    const error = { message: 'network error' };
+    mockSelectQuery({ data: null, error });
+
+    const result = await getMyTellerProfile('user-1');
+
+    expect(result).toEqual({ data: null, error });
+  });
+});
+
+describe('saveTellerProfile', () => {
+  it('入力内容とタグのIDをsave_teller_profileに渡す', async () => {
+    mockSupabase.rpc.mockResolvedValue({ data: null, error: null } as never);
+
+    const result = await saveTellerProfile({
+      selfPr: '自己PR',
+      trainingPeriod: '半年',
+      requiresBirthdate: true,
+      isAccepting: false,
+      tagIds: ['tag-1', 'tag-2'],
+    });
+
+    expect(mockSupabase.rpc).toHaveBeenCalledWith('save_teller_profile', {
+      p_self_pr: '自己PR',
+      p_training_period: '半年',
+      p_requires_birthdate: true,
+      p_is_accepting: false,
+      p_tag_ids: ['tag-1', 'tag-2'],
+    });
+    expect(result).toEqual({ error: null });
+  });
+
+  it('自己PR・修行期間が空ならnull（未入力）で渡す', async () => {
+    mockSupabase.rpc.mockResolvedValue({ data: null, error: null } as never);
+
+    await saveTellerProfile({
+      selfPr: '',
+      trainingPeriod: '',
+      requiresBirthdate: false,
+      isAccepting: true,
+      tagIds: ['tag-1'],
+    });
+
+    expect(mockSupabase.rpc).toHaveBeenCalledWith(
+      'save_teller_profile',
+      expect.objectContaining({ p_self_pr: null, p_training_period: null })
+    );
+  });
+
+  it('呼び出しに失敗したらerrorを返す', async () => {
+    const error = { message: 'network error' };
+    mockSupabase.rpc.mockResolvedValue({ data: null, error } as never);
+
+    const result = await saveTellerProfile({
+      selfPr: '',
+      trainingPeriod: '',
+      requiresBirthdate: false,
+      isAccepting: true,
+      tagIds: ['tag-1'],
+    });
+
+    expect(result).toEqual({ error });
   });
 });

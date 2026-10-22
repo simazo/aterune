@@ -28,3 +28,48 @@ export async function getTeller(tellerId: string) {
 
   return { data: data as TellerDetail | null, error };
 }
+
+// 自分の占い師プロフィール（占い師登録・編集の初期値）を、付いているタグの ID と一緒に取得する。
+// 占い師として未登録なら data は null
+export async function getMyTellerProfile(userId: string) {
+  const { data, error } = await supabase
+    .from('teller_profiles')
+    .select('self_pr, training_period, requires_birthdate, is_accepting, teller_tags(tag_id)')
+    .eq('profile_id', userId)
+    .maybeSingle();
+
+  if (!data) return { data: null, error };
+
+  const { teller_tags, ...profile } = data;
+  return { data: { ...profile, tag_ids: teller_tags.map((tag) => tag.tag_id) }, error };
+}
+
+type SaveTellerProfileParams = {
+  selfPr: string;
+  trainingPeriod: string;
+  requiresBirthdate: boolean;
+  isAccepting: boolean;
+  tagIds: string[];
+};
+
+// 自分の占い師プロフィールを保存する（未登録なら占い師として登録、登録済みなら更新）。
+// タグは渡したものに入れ替わる。自己PR・修行期間が空なら null（未入力）で保存する。
+// 占術タグが無い・文字数の超過は DB の save_teller_profile と CHECK が弾く
+export async function saveTellerProfile({
+  selfPr,
+  trainingPeriod,
+  requiresBirthdate,
+  isAccepting,
+  tagIds,
+}: SaveTellerProfileParams) {
+  const { error } = await supabase.rpc('save_teller_profile', {
+    // 型生成では関数の引数の NULL 可否が分からず string になるが、DB 側は null（未入力）を受け付ける
+    p_self_pr: (selfPr || null) as string,
+    p_training_period: (trainingPeriod || null) as string,
+    p_requires_birthdate: requiresBirthdate,
+    p_is_accepting: isAccepting,
+    p_tag_ids: tagIds,
+  });
+
+  return { error };
+}
