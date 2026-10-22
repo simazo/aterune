@@ -1,5 +1,6 @@
 import { listMessages } from '@/api/messages';
 import { getConsultantPrivateDetails } from '@/api/profile-private-details';
+import { getSessionReview } from '@/api/reviews';
 import { approveSession, completeSession, getSession, rejectSession } from '@/api/sessions';
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
@@ -12,8 +13,9 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAuth } from '@/hooks/use-auth';
 import { useErrorToast } from '@/hooks/use-error-toast';
-import type { Gender, Message, SessionDetail as SessionDetailData } from '@/types';
+import type { Gender, Message, Review, SessionDetail as SessionDetailData } from '@/types';
 import { canSeeConsultantDetails, isOpenPending } from '@/utils/group-sessions';
+import { canWriteReview } from '@/utils/review';
 import {
   formatBirthdateWithAge,
   formatRemaining,
@@ -28,6 +30,7 @@ import { RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ConfirmDialog } from './components/confirm-dialog';
 import { MessageList } from './components/message-list';
+import { ReviewCard } from './components/review-card';
 
 type ConsultantDetails = {
   birthdate: string | null;
@@ -35,6 +38,8 @@ type ConsultantDetails = {
 };
 
 type SessionMessage = Pick<Message, 'id' | 'sender_id' | 'content' | 'created_at'>;
+
+type SessionReview = Pick<Review, 'id' | 'rating' | 'comment' | 'created_at'>;
 
 // メッセージがありうる状態（承認されたあと）。承認待ち・拒否・期限切れには無いので取りに行かない
 const MESSAGE_STATUSES: SessionDetailData['status'][] = ['active', 'completed', 'auto_completed'];
@@ -46,6 +51,7 @@ type Props = {
 // セッション詳細。申込まれた側には、期限内の承認待ちのあいだ承認・拒否のボタンを出す。
 // 承認したら画面にとどまり、進行中の表示に切り替える。
 // 承認後はメッセージを並べ、進行中なら「メッセージを書く」（書く画面へ移る）と、相談者には完了のボタンを出す。
+// 相談者が完了したら（completed）、レビューを出し、まだ無ければ書ける相談者には「レビューを書く」を出す。
 // 相手のメッセージは、画面が表示されたときと、引っ張って更新したときに読み直す（リアルタイムでは受け取らない）
 export function SessionDetail({ sessionId }: Props) {
   const router = useRouter();
@@ -57,6 +63,8 @@ export function SessionDetail({ sessionId }: Props) {
   // 見てよい状態で、行が無い（未登録）なら null。見てよい状態でない・自分が占い師でないなら undefined
   const [consultantDetails, setConsultantDetails] = useState<ConsultantDetails | null | undefined>();
   const [messages, setMessages] = useState<SessionMessage[]>([]);
+  // completed のときだけ読む。まだ無ければ null、読めなかった・completed でないなら undefined
+  const [review, setReview] = useState<SessionReview | null | undefined>();
   // 期限の判定と残り時間は、読み込んだ時点の時刻で揃える
   const [loadedAt, setLoadedAt] = useState(() => new Date());
   const [isLoading, setIsLoading] = useState(true);
@@ -67,10 +75,10 @@ export function SessionDetail({ sessionId }: Props) {
   const [openDialog, setOpenDialog] = useState<'reject' | 'complete' | null>(null);
   // 最後に読み込みを始めたセッションの ID。別のセッションに切り替わったときだけ、読み込み中の表示にする
   const loadingSessionIdRef = useRef<string | null>(null);
-  // 書く画面へ移る途中か。ボタンを素早く何度も押すと、書く画面が重なって開くのを防ぐ
+  // 書く画面（メッセージ・レビュー）へ移る途中か。ボタンを素早く何度も押すと、書く画面が重なって開くのを防ぐ
   const isNavigatingRef = useRef(false);
 
-  // セッションと、（見てよい状態なら）相談者の情報・（承認後なら）メッセージを読み込む。
+  // セッションと、（見てよい状態なら）相談者の情報・（承認後なら）メッセージ・（完了したら）レビューを読み込む。
   // isCancelled が true を返したら結果を捨てる（別のセッションへ素早く切り替えたとき、古い結果で上書きしない）。
   // 読み直しで失敗したときは、表示中の内容を残してトーストだけ出す
   const load = useCallback(
@@ -87,9 +95,12 @@ export function SessionDetail({ sessionId }: Props) {
 
       const shouldLoadDetails = data.teller_id === userId && canSeeConsultantDetails(data, now);
       const shouldLoadMessages = MESSAGE_STATUSES.includes(data.status);
-      const [detailsResult, messagesResult] = await Promise.all([
+      // レビューは相談者が完了した completed にだけ付く（auto_completed には付かない）
+      const shouldLoadReview = data.status === 'completed';
+      const [detailsResult, messagesResult, reviewResult] = await Promise.all([
         shouldLoadDetails ? getConsultantPrivateDetails(data.consultant_id) : null,
         shouldLoadMessages ? listMessages(sessionId) : null,
+        shouldLoadReview ? getSessionReview(sessionId) : null,
       ]);
       if (isCancelled()) return;
 
@@ -104,6 +115,8 @@ export function SessionDetail({ sessionId }: Props) {
 
       setSession(data);
       setConsultantDetails(details);
+      // 取れなくても詳細は見られるようにする（レビューだけ「表示できません」にし、書くボタンも出さない）
+      setReview(reviewResult && !reviewResult.error ? reviewResult.data : undefined);
       setLoadedAt(now);
     },
     // showError は描画ごとに作り直されるため依存に入れない
@@ -126,6 +139,7 @@ export function SessionDetail({ sessionId }: Props) {
           // 前のセッションの内容を残さない（読み込みに失敗したら「表示できませんでした」にする）
           setSession(null);
           setMessages([]);
+          setReview(undefined);
         }
         await load(() => isCancelled);
         if (!isCancelled) setIsLoading(false);
@@ -147,6 +161,12 @@ export function SessionDetail({ sessionId }: Props) {
     if (isNavigatingRef.current) return;
     isNavigatingRef.current = true;
     router.push({ pathname: '/sessions/[id]/message', params: { id: sessionId } });
+  }
+
+  function handleWriteReview() {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+    router.push({ pathname: '/sessions/[id]/review', params: { id: sessionId } });
   }
 
   async function handleApprove() {
@@ -222,6 +242,9 @@ export function SessionDetail({ sessionId }: Props) {
   const isActive = session.status === 'active';
   // 完了できるのは相談者だけ（DB も相談者以外の完了を弾く）
   const canComplete = isActive && !isTeller;
+  // 読めなかった（undefined）ときは、レビュー済みかどうか分からないので書くボタンを出さない
+  const canReview =
+    review !== undefined && canWriteReview(session, userId, review !== null, loadedAt);
   const statusLabel = isPendingOpen
     ? canRespond
       ? 'あなたの返事待ち'
@@ -268,6 +291,16 @@ export function SessionDetail({ sessionId }: Props) {
               )}
             </VStack>
           </Card>
+
+          {session.status === 'completed' && (
+            <ReviewCard
+              review={review}
+              isTeller={isTeller}
+              canWrite={canReview}
+              completedAt={session.completed_at}
+              onWrite={handleWriteReview}
+            />
+          )}
 
           <Card>
             <VStack space="sm">
