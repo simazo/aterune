@@ -12,7 +12,7 @@ export default function AppLayout() {
   const { session } = useAuth();
 
   if (!session) {
-    return <Redirect href="/(auth)/login" />;
+    return <Redirect href="/login" />;
   }
 
   // タブ（(tabs)）の上に、占い師詳細などの画面を重ねて表示するため Stack にする。
