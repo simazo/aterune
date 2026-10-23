@@ -1,0 +1,155 @@
+import { getConsultationPost } from '@/api/consultation-posts';
+import { getMyProfile } from '@/api/profiles';
+import { Badge, BadgeText } from '@/components/ui/badge';
+import { Button, ButtonText } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { HStack } from '@/components/ui/hstack';
+import { ScrollView } from '@/components/ui/scroll-view';
+import { Spinner } from '@/components/ui/spinner';
+import { Text } from '@/components/ui/text';
+import { VStack } from '@/components/ui/vstack';
+import { useAuth } from '@/hooks/use-auth';
+import { useErrorToast } from '@/hooks/use-error-toast';
+import type { ConsultationPostListItem } from '@/types';
+import { Stack, useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+
+const STATUS_LABELS: Record<string, string> = {
+  open: '募集中',
+  in_progress: '対応中',
+  closed: '閉じた投稿',
+};
+
+function formatDate(value: string) {
+  const date = new Date(value);
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`;
+}
+
+type Props = {
+  postId: string;
+};
+
+// お悩み投稿の詳細。投稿者は匿名なので名前は出さない。
+// 応募ボタンは、占い師登録済みで、自分の投稿ではないときだけ出す（応募できる人の制限は DB も守る）
+export function ConcernDetail({ postId }: Props) {
+  const router = useRouter();
+  const showError = useErrorToast();
+  const { session } = useAuth();
+  const userId = session?.user.id;
+  const [post, setPost] = useState<ConsultationPostListItem | null>(null);
+  const [isTeller, setIsTeller] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 応募して戻ったときに「応募済み」を出すため、画面が表示されるたびに読み直す
+  useFocusEffect(
+    useCallback(() => {
+      // (app) のレイアウトがログイン済みを保証しているので、userId が無いことは無い
+      if (!userId) return;
+      let isCancelled = false;
+
+      (async () => {
+        const [postResult, profileResult] = await Promise.all([
+          getConsultationPost(postId),
+          getMyProfile(userId),
+        ]);
+        if (isCancelled) return;
+
+        if (postResult.error || profileResult.error) {
+          showError('お悩みを読み込めませんでした');
+        } else {
+          setPost(postResult.data);
+          setIsTeller(profileResult.data.is_teller);
+        }
+        setIsLoading(false);
+      })();
+
+      return () => {
+        isCancelled = true;
+      };
+      // showError は描画ごとに作り直されるため依存に入れない
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [postId, userId])
+  );
+
+  // ヘッダーは (app) の Stack で非表示にしているため、この画面だけ表示する。戻るボタンは矢印だけにする
+  const header = (
+    <Stack.Screen
+      options={{ headerShown: true, title: 'お悩み', headerBackButtonDisplayMode: 'minimal' }}
+    />
+  );
+
+  // 別の投稿の詳細へ切り替えた直後（読み込みが始まる前の描画）に、前の投稿を出さない
+  if (isLoading || (post && post.id !== postId)) {
+    return (
+      <VStack className="flex-1 items-center justify-center bg-background">
+        {header}
+        <Spinner size="large" />
+      </VStack>
+    );
+  }
+
+  // 閉じられた他人の投稿や存在しない ID は、DB が返さない
+  if (!post) {
+    return (
+      <VStack className="flex-1 items-center justify-center bg-background p-4">
+        {header}
+        <Text size="md" className="text-center text-muted-foreground">
+          このお悩みは表示できません
+        </Text>
+      </VStack>
+    );
+  }
+
+  const canApply = isTeller && !post.is_mine && !post.has_applied && post.status !== 'closed';
+
+  return (
+    <VStack className="flex-1 bg-background">
+      {header}
+      <ScrollView className="flex-1" contentContainerClassName="p-4">
+        {/* 広い画面（Web）で横に間延びしないよう、幅を抑えて中央に置く */}
+        <VStack className="w-full max-w-2xl self-center" space="lg">
+          <Card>
+            <VStack space="md">
+              <HStack className="items-center justify-between" space="sm">
+                <HStack className="flex-1 flex-wrap" space="xs">
+                  <Badge variant="secondary">
+                    <BadgeText>{post.concern_tag_name}</BadgeText>
+                  </Badge>
+                  <Badge variant="outline">
+                    <BadgeText>{STATUS_LABELS[post.status] ?? post.status}</BadgeText>
+                  </Badge>
+                </HStack>
+                <Text size="xs" className="text-muted-foreground">
+                  {formatDate(post.created_at)}
+                </Text>
+              </HStack>
+              <Text size="md">{post.concern}</Text>
+            </VStack>
+          </Card>
+
+          {post.is_mine ? (
+            <Text size="sm" className="text-center text-muted-foreground">
+              あなたの投稿です
+            </Text>
+          ) : post.has_applied ? (
+            // 拒否・期限切れのあとも同じお悩みには再び応募できないため、応募済みのままにする
+            <Button size="lg" isDisabled>
+              <ButtonText>応募済み</ButtonText>
+            </Button>
+          ) : (
+            canApply && (
+              <Button
+                size="lg"
+                onPress={() =>
+                  router.push({ pathname: '/concerns/[id]/apply', params: { id: post.id } })
+                }
+              >
+                <ButtonText>応募する</ButtonText>
+              </Button>
+            )
+          )}
+        </VStack>
+      </ScrollView>
+    </VStack>
+  );
+}
