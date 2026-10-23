@@ -1,9 +1,8 @@
 -- get_teller: 占い師1人分の詳細(相談者の占い師詳細画面用)。
--- 依存: public.teller_profiles、public.profiles、public.tags、public.teller_tags
+-- 依存: public.teller_profiles、public.profiles、public.list_teller_tags_json
 --
 -- 返す列は search_tellers の1行に、詳細画面で使う requires_birthdate・created_at を足したもの。
--- tags の中身と並び(種類 → 表示順)は search_tellers と同じにする。
--- 同じ SQL を複製しているので、tags の中身・並びを変えるときは search_tellers も合わせて直すこと。
+-- tags の中身と並びは list_teller_tags_json が決める(search_tellers と共通)。
 -- 占い師登録の無いユーザーや存在しない ID なら 0 行。
 -- 検索と違い、ログイン中のユーザー自身も返す(自分の詳細画面を開けるように)。
 -- 呼び出し元の権限で動けばよい(参照先はすべて誰でも読める)ので security definer は付けない。
@@ -39,16 +38,7 @@ as $$
     tp.review_count,
     tp.session_count,
     tp.created_at,
-    coalesce(
-      (select jsonb_agg(
-                jsonb_build_object('slug', t.slug, 'category', t.category, 'name', t.name)
-                order by t.category, -- enum の値の順番(占術 → 悩み → 回答のスタイル)
-                         t.sort_order, t.name)
-         from public.teller_tags tt
-         join public.tags t on t.id = tt.tag_id
-        where tt.teller_id = tp.profile_id),
-      '[]'::jsonb
-    )
+    public.list_teller_tags_json(tp.profile_id)
   from public.teller_profiles tp
   join public.profiles p on p.id = tp.profile_id
   where tp.profile_id = p_teller_id;

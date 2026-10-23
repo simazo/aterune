@@ -547,6 +547,7 @@ export type Database = {
           rating: number
         }[]
       }
+      list_teller_tags_json: { Args: { p_teller_id: string }; Returns: Json }
       register_push_token: {
         Args: { p_platform: string; p_token: string }
         Returns: undefined

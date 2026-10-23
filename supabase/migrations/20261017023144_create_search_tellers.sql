@@ -1,5 +1,5 @@
 -- search_tellers: 占い師検索(相談者のさがすタブ用)。
--- 依存: public.teller_profiles、public.profiles、public.tags、public.teller_tags
+-- 依存: public.teller_profiles、public.profiles、public.tags、public.teller_tags、public.list_teller_tags_json
 --
 -- タグの絞り込み:
 --   ・同じ種類(category)の中は OR、種類どうしは AND
@@ -12,7 +12,7 @@
 --   ・rating:   平均評価の高い順。評価がまだ無い占い師は最後
 --   ・sessions: 完了セッション数の多い順
 -- 結果の tags は、絞り込みに使ったタグだけでなく、その占い師の全タグ。
--- 並びは種類(占術 → 悩み → 回答のスタイル。画面の表示順に合わせる)→ 表示順。
+-- 中身と並びは list_teller_tags_json が決める(get_teller と共通)。
 -- ログイン中のユーザー自身は結果に含めない(未ログインなら auth.uid() が null なので誰も除外しない)。
 -- 呼び出し元の権限で動けばよい(参照先はすべて誰でも読める)ので security definer は付けない。
 
@@ -53,16 +53,7 @@ as $$
     tp.average_rating,
     tp.review_count,
     tp.session_count,
-    coalesce(
-      (select jsonb_agg(
-                jsonb_build_object('slug', t.slug, 'category', t.category, 'name', t.name)
-                order by t.category, -- enum の値の順番(占術 → 悩み → 回答のスタイル)
-                         t.sort_order, t.name)
-         from public.teller_tags tt
-         join public.tags t on t.id = tt.tag_id
-        where tt.teller_id = tp.profile_id),
-      '[]'::jsonb
-    )
+    public.list_teller_tags_json(tp.profile_id)
   from public.teller_profiles tp
   join public.profiles p on p.id = tp.profile_id
   where tp.profile_id is distinct from (select auth.uid())
