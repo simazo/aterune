@@ -478,10 +478,12 @@ export type Database = {
         Args: { p_applicant_message?: string; p_post_id: string }
         Returns: string
       }
+      auto_complete_sessions: { Args: never; Returns: undefined }
       close_consultation_post: {
         Args: { p_post_id: string }
         Returns: undefined
       }
+      expire_session_requests: { Args: never; Returns: undefined }
       get_consultation_post: {
         Args: { p_post_id: string }
         Returns: {

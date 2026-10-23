@@ -51,7 +51,7 @@ comment on column public.sessions.concern           is '悩みの内容(お悩�
 comment on column public.sessions.post_id           is 'お悩み投稿経由の場合の投稿ID。それ以外と投稿削除時はNULL';
 comment on column public.sessions.applicant_message is '申込み時のひとこと(任意。100文字まで)';
 comment on column public.sessions.completed_at      is '完了日時(completed / auto_completed への遷移時にトリガーが設定)';
-comment on column public.sessions.last_activity_at  is '相談者側の最終操作日時(自動完了の判定に使用。messages 作成時のトリガーで更新)';
+comment on column public.sessions.last_activity_at  is '相談者側の最終操作日時(自動完了の判定に使用。承認時と、相談者の messages 作成時にトリガーで更新)';
 comment on column public.sessions.expires_at        is 'pending の有効期限(作成から48時間)';
 
 -- 索引
@@ -195,6 +195,7 @@ $$;
 --   active  → completed         : 相談者のみ
 --   active  → auto_completed    : システムのみ
 --   それ以外(終了済みからの遷移を含む)は不可
+-- 承認時は last_activity_at を承認時点にする(自動完了までの期間を、承認待ちの時間を含めずに数えるため)
 create function public.guard_session_status_change()
 returns trigger
 language plpgsql
@@ -214,6 +215,7 @@ begin
     if old.expires_at < now() then
       raise exception 'the session request has expired';
     end if;
+    new.last_activity_at := now();
 
   elsif old.status = 'pending' and new.status = 'rejected' then
     if v_uid is not null and v_uid <> new.recipient_id then

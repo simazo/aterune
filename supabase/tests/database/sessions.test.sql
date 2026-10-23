@@ -1,5 +1,5 @@
 begin;
-select plan(73);
+select plan(74);
 
 -- ===== テストデータ(postgres 権限) =====
 -- alice=占い師でもある相談者 / bob=占い師 / carol=占い師ではない一般ユーザー / dave=占い師(完了数・制約用)
@@ -231,6 +231,10 @@ select lives_ok(
 );
 reset role;
 
+-- s1 は申込みから時間がたってから承認される想定にする(承認で last_activity_at が更新されるかを見るため)
+update public.sessions set last_activity_at = now() - interval '2 days'
+ where id = '00000000-0000-0000-0000-000000000501';
+
 -- ===== bob(申し込まれた側・占い師)=====
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000f2","role":"authenticated"}', true);
@@ -239,6 +243,12 @@ select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000
 select lives_ok(
   $$ update public.sessions set status = 'active' where id = '00000000-0000-0000-0000-000000000501' $$,
   '申し込まれた側は pending → active にできる'
+);
+
+-- 74. 承認で last_activity_at が承認時点になる(自動完了までの期間を承認から数えるため)
+select is(
+  (select last_activity_at from public.sessions where id = '00000000-0000-0000-0000-000000000501'),
+  now(), '承認で last_activity_at が承認時点に更新される'
 );
 
 -- 23. closed の投稿には応募できない
