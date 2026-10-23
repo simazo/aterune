@@ -9,7 +9,7 @@ export function formatRemaining(expiresAt: string, now: Date) {
 }
 
 // 終了したセッションの結果の表示名。
-// 期限切れの pending（DB の定期処理が未実装で expired に変わっていないもの）も、期限切れとして出す
+// 期限切れの pending（DB の定期処理（最大10分おき）がまだ expired に変えていないもの）も、期限切れとして出す
 export function getEndedLabel(status: Session['status']) {
   switch (status) {
     case 'completed':

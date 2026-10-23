@@ -35,7 +35,7 @@ export function canSeeConsultantDetails(
 }
 
 // 自分のセッションのうち、指定した側のものをやり取りタブのセクションに仕分ける（並び順は元のまま）。
-// 期限切れの pending を expired に更新する定期処理がまだ無いため、期限を過ぎた pending は期限切れとして「終了」に入れる
+// pending を expired に更新する定期処理は最大10分おきにしか動かないため、そのずれを埋めるよう、期限を過ぎた pending は期限切れとして「終了」に入れる
 export function groupSessions(
   sessions: SessionListItem[],
   userId: string,
