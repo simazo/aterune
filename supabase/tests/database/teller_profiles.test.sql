@@ -72,19 +72,31 @@ set local role authenticated;
 set local request.jwt.claims =
   '{"sub":"00000000-0000-0000-0000-0000000000c2","role":"authenticated"}';
 
-select lives_ok(
+-- 登録は save_teller_profile だけで行う(占術タグの無い占い師を作らせないため)
+select throws_ok(
   $$ insert into public.teller_profiles (profile_id, self_pr)
        values ('00000000-0000-0000-0000-0000000000c2', 'bob の自己PR') $$,
-  '自分自身を占い師として登録できる'
+  '42501',
+  null,
+  '自分自身でも、直接 INSERT して占い師として登録することはできない'
 );
 
 select is(
   (select is_teller from public.profiles
     where id = '00000000-0000-0000-0000-0000000000c2'),
-  true,
-  'ユーザー自身の登録でも、トリガー経由で is_teller が true になる'
+  false,
+  '直接の登録が弾かれたときは、is_teller は false のまま'
 );
 
+-- 以降の更新のテスト用に、bob をシステム側で登録しておく(save_teller_profile での登録に当たる)
+reset role;
+insert into public.teller_profiles (profile_id, self_pr)
+  values ('00000000-0000-0000-0000-0000000000c2', 'bob の自己PR');
+set local role authenticated;
+set local request.jwt.claims =
+  '{"sub":"00000000-0000-0000-0000-0000000000c2","role":"authenticated"}';
+
+-- insert の権限自体が無いため、RLS より前に権限不足で弾かれる(自分自身の登録と同じ理由)
 select throws_ok(
   $$ insert into public.teller_profiles (profile_id)
        values ('00000000-0000-0000-0000-0000000000c3') $$,

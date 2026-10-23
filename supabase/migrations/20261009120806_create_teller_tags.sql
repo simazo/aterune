@@ -1,4 +1,6 @@
--- teller_tags: 占い師と占術タグの多対多。自分の行だけ追加・削除できる。
+-- teller_tags: 占い師と占術タグの多対多。
+-- 追加・削除は save_teller_profile だけで行う(直接の書き込みを許すと、占術タグを消して
+-- 「占術タグの無い占い師」を作れてしまうため)。
 create table public.teller_tags (
   teller_id uuid not null references public.teller_profiles (profile_id) on delete cascade,
   tag_id    uuid not null references public.tags (id) on delete cascade,
@@ -15,21 +17,10 @@ create index teller_tags_tag_id_idx on public.teller_tags (tag_id);
 alter table public.teller_tags enable row level security;
 
 revoke all on public.teller_tags from anon, authenticated;
-grant select         on public.teller_tags to anon, authenticated;
-grant insert, delete on public.teller_tags to authenticated;
-grant all            on public.teller_tags to service_role;
+grant select on public.teller_tags to anon, authenticated;
+grant all    on public.teller_tags to service_role;
 
 create policy teller_tags_select_public
   on public.teller_tags for select
   to anon, authenticated
   using (true);
-
-create policy teller_tags_insert_own
-  on public.teller_tags for insert
-  to authenticated
-  with check ((select auth.uid()) = teller_id);
-
-create policy teller_tags_delete_own
-  on public.teller_tags for delete
-  to authenticated
-  using ((select auth.uid()) = teller_id);

@@ -60,14 +60,17 @@ select is(
   'authenticated は他人の teller_tags も select できる'
 );
 
--- 5. alice は自分のタグを insert できる
-select lives_ok(
+-- 5. alice は自分のタグも直接 insert できない(タグの書き換えは save_teller_profile だけで行い、
+--    占術タグの無い占い師を作らせないため)
+select throws_ok(
   $$ insert into public.teller_tags (teller_id, tag_id) values
      ('00000000-0000-0000-0000-0000000000b1', '00000000-0000-0000-0000-0000000000a2') $$,
-  'alice は自分の teller_tags を insert できる'
+  '42501', null,
+  'alice は自分の teller_tags も直接 insert できない'
 );
 
 -- 6. alice は他人(bob)名義では insert できない
+--    (insert の権限自体が無いため、RLS より前に権限不足で弾かれる。5 と同じ理由)
 select throws_ok(
   $$ insert into public.teller_tags (teller_id, tag_id) values
      ('00000000-0000-0000-0000-0000000000b2', '00000000-0000-0000-0000-0000000000a3') $$,
@@ -83,30 +86,22 @@ select throws_ok(
   'authenticated は teller_tags を update できない'
 );
 
--- 8. alice は他人(bob)の行を delete しても 0 行(RLS で見えない対象)
-delete from public.teller_tags
-  where teller_id = '00000000-0000-0000-0000-0000000000b2';
-reset role;
-select is(
-  (select count(*)::int from public.teller_tags
-    where teller_id = '00000000-0000-0000-0000-0000000000b2'),
-  1,
-  'alice は他人の teller_tags を delete できない(行が残る)'
+-- 8. alice は他人(bob)の行を delete できない
+select throws_ok(
+  $$ delete from public.teller_tags
+       where teller_id = '00000000-0000-0000-0000-0000000000b2' $$,
+  '42501', null,
+  'alice は他人の teller_tags を delete できない'
 );
 
--- 9. alice は自分の行を delete できる
-set local role authenticated;
-select set_config('request.jwt.claims',
-  '{"sub":"00000000-0000-0000-0000-0000000000b1","role":"authenticated"}', true);
-delete from public.teller_tags
-  where teller_id = '00000000-0000-0000-0000-0000000000b1';
-reset role;
-select is(
-  (select count(*)::int from public.teller_tags
-    where teller_id = '00000000-0000-0000-0000-0000000000b1'),
-  0,
-  'alice は自分の teller_tags を delete できる'
+-- 9. alice は自分の行も直接 delete できない(5 と同じ理由)
+select throws_ok(
+  $$ delete from public.teller_tags
+       where teller_id = '00000000-0000-0000-0000-0000000000b1' $$,
+  '42501', null,
+  'alice は自分の teller_tags も直接 delete できない'
 );
+reset role;
 
 -- ===== 制約(postgres 権限) =====
 -- 10. 同じ組み合わせは重複できない(主キー)

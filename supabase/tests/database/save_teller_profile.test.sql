@@ -17,7 +17,7 @@ insert into public.teller_profiles (profile_id, self_pr, training_period) values
 insert into public.teller_tags (teller_id, tag_id) values
   ('00000000-0000-0000-0000-0000000000b2', '00000000-0000-0000-0000-0000000000d1');
 
--- 1-3. 実行権限と security invoker
+-- 1-3. 実行権限と security definer
 select ok(
   not has_function_privilege('anon', 'public.save_teller_profile(text, text, boolean, boolean, uuid[])', 'execute'),
   'anon は save_teller_profile を実行できない'
@@ -26,10 +26,12 @@ select ok(
   has_function_privilege('authenticated', 'public.save_teller_profile(text, text, boolean, boolean, uuid[])', 'execute'),
   'authenticated は save_teller_profile を実行できる'
 );
+-- teller_profiles の insert と teller_tags の insert / delete は直接できないため、definer で書き込む。
+-- RLS が効かないので、他の占い師に触れないことは 25-26 で確かめる
 select ok(
-  not (select prosecdef from pg_proc
-        where oid = 'public.save_teller_profile(text, text, boolean, boolean, uuid[])'::regprocedure),
-  'save_teller_profile は security invoker(RLS がそのまま効く)'
+  (select prosecdef from pg_proc
+    where oid = 'public.save_teller_profile(text, text, boolean, boolean, uuid[])'::regprocedure),
+  'save_teller_profile は security definer'
 );
 
 -- ===== 未ログイン(auth.uid() が null)=====

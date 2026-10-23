@@ -5,7 +5,8 @@
 -- 別々に呼ぶと、途中で失敗したときに「タグの無い占い師」が残るため、関数にまとめて1トランザクションにしている。
 -- 占術(divination)タグが1つも無ければ例外にする(検索で見つからない占い師を作らないため)。
 -- 存在しないタグが含まれていれば外部キー違反になり、全体が取り消される。
--- 自分の行の読み書きだけなので、security definer は付けず RLS をそのまま効かせる。
+-- teller_profiles の insert と teller_tags の insert / delete は、このルールを守るため直接はできなくしている。
+-- そのため security definer で書き込む。RLS が効かないので、auth.uid() 以外の行には触らないこと。
 -- 未ログイン(auth.uid() が null)なら例外にする。
 
 create function public.save_teller_profile(
@@ -17,7 +18,7 @@ create function public.save_teller_profile(
 )
 returns void
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $$
 declare

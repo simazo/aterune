@@ -79,11 +79,6 @@ create policy teller_profiles_select_public
   to anon, authenticated
   using (true);
 
-create policy teller_profiles_insert_own
-  on public.teller_profiles for insert
-  to authenticated
-  with check ((select auth.uid()) = profile_id);
-
 create policy teller_profiles_update_own
   on public.teller_profiles for update
   to authenticated
@@ -96,9 +91,8 @@ revoke all on public.teller_profiles from anon, authenticated;
 grant select on public.teller_profiles to anon;
 grant select on public.teller_profiles to authenticated;
 
+-- 登録(insert)は save_teller_profile だけで行う(占術タグの無い占い師を作らせないため)。
 -- average_rating / review_count / session_count は自分で書き換えさせない(列を限定)
-grant insert (profile_id, self_pr, is_accepting, requires_birthdate, training_period)
-  on public.teller_profiles to authenticated;
 grant update (self_pr, is_accepting, requires_birthdate, training_period)
   on public.teller_profiles to authenticated;
 
