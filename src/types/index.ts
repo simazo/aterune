@@ -12,8 +12,8 @@ export type Favorite = Tables<'favorites'>;
 export type Tag = Tables<'tags'>;
 export type PushToken = Tables<'push_tokens'>;
 
-// tags.category の CHECK 制約と合わせる
-export type TagCategory = 'divination' | 'concern' | 'style';
+// タグの種類（DB の enum tag_category）
+export type TagCategory = Enums<'tag_category'>;
 
 // profile_private_details.gender の CHECK 制約と合わせる（「回答しない」は null）
 export type Gender = 'female' | 'male' | 'other';

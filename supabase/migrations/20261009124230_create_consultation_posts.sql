@@ -36,7 +36,7 @@ language plpgsql
 set search_path = ''
 as $$
 declare
-  v_category text;
+  v_category public.tag_category;
 begin
   select category into v_category
     from public.tags

@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(18);
 
 -- 1. RLS が有効
 select ok(
@@ -91,10 +91,10 @@ select throws_ok(
   'tags.slug に大文字や空白は使えない'
 );
 
--- 12. category は決められた値のみ
+-- 12. category は決められた値のみ(enum tag_category にない値は入力の段階で弾かれる)
 select throws_ok(
   $$ insert into public.tags (category, slug, name) values ('unknown', 'test-style-1', 'テストスタイル1') $$,
-  '23514',
+  '22P02',
   null,
   'tags.category は divination / style / concern 以外にできない'
 );
@@ -128,6 +128,14 @@ select throws_ok(
   null,
   'tags.category は NULL にできない'
 );
+
+-- 17. category は enum tag_category(種類を足したときに、型生成で TS 側の型も変わるようにするため)
+select col_type_is('public', 'tags', 'category', 'tag_category',
+  'tags.category は tag_category 型');
+
+-- 18. enum の値の順番は画面の表示順(占術 → 悩み → 回答のスタイル)。タグの並び替えはこの順番を使う
+select enum_has_labels('public', 'tag_category', array['divination', 'concern', 'style'],
+  'tag_category の値は divination / concern / style の順');
 
 select * from finish();
 rollback;

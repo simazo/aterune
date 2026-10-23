@@ -42,7 +42,7 @@ as $$
     coalesce(
       (select jsonb_agg(
                 jsonb_build_object('slug', t.slug, 'category', t.category, 'name', t.name)
-                order by array_position(array['divination', 'concern', 'style'], t.category),
+                order by t.category, -- enum の値の順番(占術 → 悩み → 回答のスタイル)
                          t.sort_order, t.name)
          from public.teller_tags tt
          join public.tags t on t.id = tt.tag_id

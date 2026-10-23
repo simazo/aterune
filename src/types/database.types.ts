@@ -370,21 +370,21 @@ export type Database = {
       }
       tags: {
         Row: {
-          category: string
+          category: Database["public"]["Enums"]["tag_category"]
           id: string
           name: string
           slug: string
           sort_order: number
         }
         Insert: {
-          category: string
+          category: Database["public"]["Enums"]["tag_category"]
           id?: string
           name: string
           slug: string
           sort_order?: number
         }
         Update: {
-          category?: string
+          category?: Database["public"]["Enums"]["tag_category"]
           id?: string
           name?: string
           slug?: string
@@ -582,6 +582,7 @@ export type Database = {
       }
     }
     Enums: {
+      tag_category: "divination" | "concern" | "style"
       teller_sort_order: "newest" | "rating" | "sessions"
     }
     CompositeTypes: {
@@ -713,6 +714,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      tag_category: ["divination", "concern", "style"],
       teller_sort_order: ["newest", "rating", "sessions"],
     },
   },

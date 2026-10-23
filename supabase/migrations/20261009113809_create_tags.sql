@@ -1,13 +1,19 @@
 -- tags: タグマスタ(占術・悩み・回答のスタイル)。ユーザーは読み取りのみ、書き込みは service_role / seed のみ。
+
+-- タグの種類。enum にして、型生成で TS 側の型(Enums<'tag_category'>)も入るようにする。
+-- 値の順番は画面の表示順(占術 → 悩み → 回答のスタイル)で、タグの並び替え(order by category)にも使う
+create type public.tag_category as enum ('divination', 'concern', 'style');
+
+comment on type public.tag_category is
+  'タグの種類(divination=占術、concern=悩み・相談内容、style=回答のスタイル)。値の順番は画面の表示順';
+
 create table public.tags (
   id         uuid primary key default gen_random_uuid(),
-  category   text not null,
+  category   public.tag_category not null,
   slug       text not null unique,
   name       text not null,
   sort_order integer not null default 0,
 
-  constraint tags_category_check
-    check (category in ('divination', 'concern', 'style')),
   -- URL やログで使う識別子。英小文字・数字をハイフンでつないだ形に限る
   constraint tags_slug_check
     check (slug ~ '^[a-z0-9]+(-[a-z0-9]+)*$'),
