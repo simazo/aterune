@@ -5,6 +5,7 @@ import { Pressable } from '@/components/ui/pressable';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import type { ConsultationPostListItem } from '@/types';
+import { CONSULTATION_POST_STATUS_LABELS } from '@/utils/consultation-post-display';
 import { useRouter } from 'expo-router';
 
 // お悩みはカードでは冒頭だけ見せる（約2行分）。
@@ -21,11 +22,17 @@ function formatDate(value: string) {
 }
 
 type Props = {
-  post: ConsultationPostListItem;
+  // 自分の投稿の一覧（list_my_consultation_posts）の行には is_mine・has_applied が無いので、無くてもよい形にする
+  post: Omit<ConsultationPostListItem, 'is_mine' | 'has_applied'> &
+    Partial<Pick<ConsultationPostListItem, 'is_mine' | 'has_applied'>>;
+  // 自分の投稿の一覧では、募集中・閉じたも含めて状態を必ず出す（みんなのお悩みでは対応中だけ出す）
+  showsAllStatuses?: boolean;
 };
 
 // お悩み一覧の1件。投稿者は匿名なので名前は出さない。タップすると投稿の詳細画面へ移る
-export function ConcernCard({ post }: Props) {
+export function ConcernCard({ post, showsAllStatuses = false }: Props) {
+  const showsStatus = showsAllStatuses || post.status === 'in_progress';
+
   const router = useRouter();
 
   function handlePress() {
@@ -47,9 +54,11 @@ export function ConcernCard({ post }: Props) {
               <Badge variant="secondary">
                 <BadgeText>{post.concern_tag_name}</BadgeText>
               </Badge>
-              {post.status === 'in_progress' && (
+              {showsStatus && (
                 <Badge variant="outline">
-                  <BadgeText>対応中</BadgeText>
+                  <BadgeText>
+                    {CONSULTATION_POST_STATUS_LABELS[post.status] ?? post.status}
+                  </BadgeText>
                 </Badge>
               )}
               {post.is_mine && (

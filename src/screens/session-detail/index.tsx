@@ -2,6 +2,7 @@ import { listMessages } from '@/api/messages';
 import { getConsultantPrivateDetails } from '@/api/profile-private-details';
 import { getSessionReview } from '@/api/reviews';
 import { approveSession, completeSession, getSession, rejectSession } from '@/api/sessions';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -28,7 +29,6 @@ import { useCallback, useRef, useState } from 'react';
 // 引っ張って更新は gluestack-ui に対応する部品が無いため、React Native の RefreshControl を使う（Web では効かない）
 import { RefreshControl } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ConfirmDialog } from './components/confirm-dialog';
 import { MessageList } from './components/message-list';
 import { ReviewCard } from './components/review-card';
 

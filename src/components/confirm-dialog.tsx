@@ -22,7 +22,7 @@ type Props = {
   onConfirm: () => void;
 };
 
-// 元に戻せない操作（申込みの拒否・セッションの完了）の前の確認。押し間違いを防ぐ
+// 元に戻せない操作（申込みの拒否・セッションの完了・お悩みを閉じる）の前の確認。押し間違いを防ぐ
 export function ConfirmDialog({
   isOpen,
   title,

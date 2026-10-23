@@ -1,5 +1,6 @@
-import { getConsultationPost } from '@/api/consultation-posts';
+import { closeConsultationPost, getConsultationPost } from '@/api/consultation-posts';
 import { getMyProfile } from '@/api/profiles';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,15 +11,11 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAuth } from '@/hooks/use-auth';
 import { useErrorToast } from '@/hooks/use-error-toast';
+import { useSuccessToast } from '@/hooks/use-success-toast';
 import type { ConsultationPostListItem } from '@/types';
+import { CONSULTATION_POST_STATUS_LABELS } from '@/utils/consultation-post-display';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-
-const STATUS_LABELS: Record<string, string> = {
-  open: '募集中',
-  in_progress: '対応中',
-  closed: '閉じた投稿',
-};
 
 function formatDate(value: string) {
   const date = new Date(value);
@@ -34,11 +31,14 @@ type Props = {
 export function ConcernDetail({ postId }: Props) {
   const router = useRouter();
   const showError = useErrorToast();
+  const showSuccess = useSuccessToast();
   const { session } = useAuth();
   const userId = session?.user.id;
   const [post, setPost] = useState<ConsultationPostListItem | null>(null);
   const [isTeller, setIsTeller] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isCloseDialogOpen, setIsCloseDialogOpen] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   // 応募して戻ったときに「応募済み」を出すため、画面が表示されるたびに読み直す
   useFocusEffect(
@@ -70,6 +70,24 @@ export function ConcernDetail({ postId }: Props) {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [postId, userId])
   );
+
+  // 自分の投稿を閉じる。閉じられるのが本人だけであることは DB の close_consultation_post が守り、
+  // 画面では本人にしかボタンを出さないため、失敗は通信エラーなどに限られる
+  async function handleClose() {
+    setIsClosing(true);
+    const { error } = await closeConsultationPost(postId);
+    if (error) {
+      showError('閉じられませんでした。時間をおいて、もう一度お試しください');
+      setIsClosing(false);
+      return;
+    }
+
+    // 読み直さずに、閉じた状態を画面に反映する（閉じた投稿は本人なら読めるが、状態以外は変わらない）
+    setPost((current) => (current ? { ...current, status: 'closed' } : current));
+    setIsClosing(false);
+    setIsCloseDialogOpen(false);
+    showSuccess('お悩みを閉じました');
+  }
 
   // ヘッダーは (app) の Stack で非表示にしているため、この画面だけ表示する。戻るボタンは矢印だけにする
   const header = (
@@ -116,7 +134,9 @@ export function ConcernDetail({ postId }: Props) {
                     <BadgeText>{post.concern_tag_name}</BadgeText>
                   </Badge>
                   <Badge variant="outline">
-                    <BadgeText>{STATUS_LABELS[post.status] ?? post.status}</BadgeText>
+                    <BadgeText>
+                      {CONSULTATION_POST_STATUS_LABELS[post.status] ?? post.status}
+                    </BadgeText>
                   </Badge>
                 </HStack>
                 <Text size="xs" className="text-muted-foreground">
@@ -128,9 +148,23 @@ export function ConcernDetail({ postId }: Props) {
           </Card>
 
           {post.is_mine ? (
-            <Text size="sm" className="text-center text-muted-foreground">
-              あなたの投稿です
-            </Text>
+            <VStack space="md">
+              <Text size="sm" className="text-center text-muted-foreground">
+                {post.status === 'closed'
+                  ? 'あなたの投稿です。閉じたため、新しい応募は受け付けていません'
+                  : 'あなたの投稿です'}
+              </Text>
+              {post.status !== 'closed' && (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="bg-card"
+                  onPress={() => setIsCloseDialogOpen(true)}
+                >
+                  <ButtonText>このお悩みを閉じる</ButtonText>
+                </Button>
+              )}
+            </VStack>
           ) : post.has_applied ? (
             // 拒否・期限切れのあとも同じお悩みには再び応募できないため、応募済みのままにする
             <Button size="lg" isDisabled>
@@ -150,6 +184,17 @@ export function ConcernDetail({ postId }: Props) {
           )}
         </VStack>
       </ScrollView>
+
+      <ConfirmDialog
+        isOpen={isCloseDialogOpen}
+        title="このお悩みを閉じますか？"
+        description="閉じると、新しい応募を受け付けなくなります。承認待ち・進行中のやり取りはそのまま続きます。閉じたお悩みは再開できません。"
+        confirmLabel="閉じる"
+        confirmVariant="destructive"
+        isSubmitting={isClosing}
+        onClose={() => setIsCloseDialogOpen(false)}
+        onConfirm={handleClose}
+      />
     </VStack>
   );
 }
