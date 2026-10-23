@@ -6,6 +6,7 @@ import { AuthProvider } from '@/providers/auth-provider';
 import { Slot, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import "../../global.css";
 
 SplashScreen.preventAutoHideAsync();
@@ -28,10 +29,13 @@ function RootLayoutContent() {
   );
 }
 
+// KeyboardProvider は、入力欄のある画面の KeyboardAwareScrollView（@/components/keyboard-aware-scroll-view）に必要
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutContent />
-    </AuthProvider>
+    <KeyboardProvider>
+      <AuthProvider>
+        <RootLayoutContent />
+      </AuthProvider>
+    </KeyboardProvider>
   );
 }
