@@ -119,9 +119,7 @@ export function SessionDetail({ sessionId }: Props) {
       setReview(reviewResult && !reviewResult.error ? reviewResult.data : undefined);
       setLoadedAt(now);
     },
-    // showError は描画ごとに作り直されるため依存に入れない
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sessionId, userId]
+    [sessionId, userId, showError]
   );
 
   // 書く画面から戻ったときに送ったメッセージを出すため、画面が表示されるたびに読み直す

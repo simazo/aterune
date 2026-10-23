@@ -93,9 +93,7 @@ export function TellerDetail({ tellerId }: Props) {
     return () => {
       isCancelled = true;
     };
-    // showError は描画ごとに作り直されるため依存に入れない
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tellerId]);
+  }, [tellerId, showError]);
 
   // ヘッダーは (app) の Stack で非表示にしているため、この画面だけ表示する（上のセーフエリアはヘッダーが避ける）。
   // 戻るボタンは矢印だけにする（前の画面のタイトルは出さない）。

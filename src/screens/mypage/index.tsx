@@ -48,9 +48,7 @@ export function MyPage() {
       return () => {
         isCancelled = true;
       };
-      // showError は描画ごとに作り直されるため依存に入れない
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [userId])
+    }, [userId, showError])
   );
 
   async function handleSignOut() {

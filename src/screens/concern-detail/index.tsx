@@ -66,9 +66,7 @@ export function ConcernDetail({ postId }: Props) {
       return () => {
         isCancelled = true;
       };
-      // showError は描画ごとに作り直されるため依存に入れない
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [postId, userId])
+    }, [postId, userId, showError])
   );
 
   // 自分の投稿を閉じる。閉じられるのが本人だけであることは DB の close_consultation_post が守り、

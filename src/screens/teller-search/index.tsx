@@ -39,9 +39,7 @@ export function TellerSearch() {
       }
       setTags(data);
     })();
-    // showError は描画ごとに作り直されるため依存に入れない（読み込みは初回だけ）
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [showError]);
 
   useEffect(() => {
     // 選択を素早く切り替えたとき、古い検索結果で上書きしないようにする
@@ -63,8 +61,7 @@ export function TellerSearch() {
     return () => {
       isCancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSlugs, isAcceptingOnly, sort]);
+  }, [selectedSlugs, isAcceptingOnly, sort, showError]);
 
   function handleToggleTag(slug: string) {
     setSelectedSlugs((current) =>

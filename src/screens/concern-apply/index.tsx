@@ -36,9 +36,7 @@ export function ConcernApply({ postId }: Props) {
     return () => {
       isCancelled = true;
     };
-    // showError は描画ごとに作り直されるため依存に入れない
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [postId]);
+  }, [postId, showError]);
 
   // ヘッダーは (app) の Stack で非表示にしているため、この画面だけ表示する。戻るボタンは矢印だけにする
   const header = (
