@@ -51,15 +51,16 @@ create trigger reviews_update_teller_rating
 alter table public.reviews enable row level security;
 
 revoke all on public.reviews from anon, authenticated;
-grant select on public.reviews to anon, authenticated;
+grant select on public.reviews to authenticated;
 grant insert (session_id, reviewer_id, reviewee_id, rating, comment) on public.reviews to authenticated;
 grant all on public.reviews to service_role;
 
--- 評価は公開情報
-create policy reviews_select_public
+-- 直接読めるのは当事者(相談者・占い師)だけ。
+-- reviewer_id・session_id から誰がどの占い師に相談したかが分かるため、公開の一覧は list_teller_reviews で出す
+create policy reviews_select_party
   on public.reviews for select
-  to anon, authenticated
-  using (true);
+  to authenticated
+  using ((select auth.uid()) in (reviewer_id, reviewee_id));
 
 -- 投稿できるのは、そのセッションの相談者が、担当の占い師に対して、
 -- 相談者の完了操作(completed)から7日以内に限る。auto_completed は不可。

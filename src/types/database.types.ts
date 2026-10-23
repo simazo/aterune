@@ -538,6 +538,15 @@ export type Database = {
           status: string
         }[]
       }
+      list_teller_reviews: {
+        Args: { p_limit: number; p_teller_id: string }
+        Returns: {
+          comment: string
+          created_at: string
+          id: string
+          rating: number
+        }[]
+      }
       register_push_token: {
         Args: { p_platform: string; p_token: string }
         Returns: undefined

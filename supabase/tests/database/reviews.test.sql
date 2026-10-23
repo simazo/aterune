@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(27);
 
 -- ===== テストデータ(postgres 権限)=====
 -- carol=相談者 / bob=占い師 / dave=無関係のユーザー
@@ -42,10 +42,10 @@ select ok(
 -- ===== anon =====
 set local role anon;
 
--- 2. anon も select できる(公開情報)
-select is(
-  (select count(*)::int from public.reviews where session_id = '00000000-0000-0000-0000-000000000806'),
-  1, 'anon は reviews を select できる'
+-- 2. anon は select できない(誰がどの占い師に相談したかを知られないよう、公開の一覧は list_teller_reviews で出す)
+select throws_ok(
+  $$ select count(*) from public.reviews $$,
+  '42501', null, 'anon は reviews を select できない'
 );
 
 -- 3. anon は insert できない
@@ -61,7 +61,13 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000c1","role":"authenticated"}', true);
 
--- 4. 完了後7日以内の completed セッションに評価できる
+-- 4. 相談者は自分が書いたレビューを読める
+select is(
+  (select count(*)::int from public.reviews where session_id = '00000000-0000-0000-0000-000000000806'),
+  1, '相談者(reviewer)は自分のレビューを select できる'
+);
+
+-- 5. 完了後7日以内の completed セッションに評価できる
 select lives_ok(
   $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating) values
      ('00000000-0000-0000-0000-000000000801', '00000000-0000-0000-0000-0000000000c1',
@@ -69,7 +75,7 @@ select lives_ok(
   '相談者は completed(7日以内)のセッションに評価できる'
 );
 
--- 5. 同じセッションに2回は評価できない
+-- 6. 同じセッションに2回は評価できない
 select throws_ok(
   $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating) values
      ('00000000-0000-0000-0000-000000000801', '00000000-0000-0000-0000-0000000000c1',
@@ -77,7 +83,7 @@ select throws_ok(
   '23505', null, '1セッションにつき評価は1回まで'
 );
 
--- 6. 完了から7日を過ぎたら評価できない
+-- 7. 完了から7日を過ぎたら評価できない
 select throws_ok(
   $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating) values
      ('00000000-0000-0000-0000-000000000802', '00000000-0000-0000-0000-0000000000c1',
@@ -85,7 +91,7 @@ select throws_ok(
   '42501', null, '完了から7日を過ぎたら評価できない'
 );
 
--- 7. auto_completed は評価できない
+-- 8. auto_completed は評価できない
 select throws_ok(
   $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating) values
      ('00000000-0000-0000-0000-000000000803', '00000000-0000-0000-0000-0000000000c1',
@@ -93,7 +99,7 @@ select throws_ok(
   '42501', null, 'auto_completed は評価できない'
 );
 
--- 8. active(完了前)は評価できない
+-- 9. active(完了前)は評価できない
 select throws_ok(
   $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating) values
      ('00000000-0000-0000-0000-000000000804', '00000000-0000-0000-0000-0000000000c1',
@@ -101,7 +107,7 @@ select throws_ok(
   '42501', null, 'active のセッションは評価できない'
 );
 
--- 9. 他人名義(reviewer_id が自分でない)では評価できない
+-- 10. 他人名義(reviewer_id が自分でない)では評価できない
 select throws_ok(
   $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating) values
      ('00000000-0000-0000-0000-000000000807', '00000000-0000-0000-0000-0000000000b2',
@@ -109,7 +115,7 @@ select throws_ok(
   '42501', null, '他人名義では評価できない'
 );
 
--- 10. 評価対象がセッションの占い師でなければ評価できない
+-- 11. 評価対象がセッションの占い師でなければ評価できない
 select throws_ok(
   $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating) values
      ('00000000-0000-0000-0000-000000000807', '00000000-0000-0000-0000-0000000000c1',
@@ -117,7 +123,7 @@ select throws_ok(
   '42501', null, 'reviewee_id がセッションの占い師でなければ評価できない'
 );
 
--- 11. 評価点は 1〜5
+-- 12. 評価点は 1〜5
 select throws_ok(
   $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating) values
      ('00000000-0000-0000-0000-000000000807', '00000000-0000-0000-0000-0000000000c1',
@@ -125,13 +131,13 @@ select throws_ok(
   '23514', null, 'rating は 1〜5 の範囲外を入れられない'
 );
 
--- 12. update できない
+-- 13. update できない
 select throws_ok(
   $$ update public.reviews set rating = 1 $$,
   '42501', null, 'authenticated は reviews を update できない'
 );
 
--- 13. delete できない
+-- 14. delete できない
 select throws_ok(
   $$ delete from public.reviews $$,
   '42501', null, 'authenticated は reviews を delete できない'
@@ -142,56 +148,73 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000d3","role":"authenticated"}', true);
 
--- 14. 相談者でない人は評価できない
+-- 15. 相談者でない人は評価できない
 select throws_ok(
   $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating) values
      ('00000000-0000-0000-0000-000000000807', '00000000-0000-0000-0000-0000000000d3',
       '00000000-0000-0000-0000-0000000000b2', 4) $$,
   '42501', null, '相談者でない人は評価できない'
 );
+
+-- 16. 当事者でない人からはレビューが見えない
+select is(
+  (select count(*)::int from public.reviews),
+  0, '当事者でない人は reviews を1件も select できない'
+);
+reset role;
+
+-- ===== bob(占い師)=====
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000b2","role":"authenticated"}', true);
+
+-- 17. 占い師は自分が受けたレビューを読める
+select is(
+  (select count(*)::int from public.reviews where session_id = '00000000-0000-0000-0000-000000000806'),
+  1, '占い師(reviewee)は自分が受けたレビューを select できる'
+);
 reset role;
 
 -- ===== 評価キャッシュ(teller_profiles)=====
--- 15. 件数: seed(5)+ carol(4)= 2件
+-- 18. 件数: seed(5)+ carol(4)= 2件
 select is(
   (select review_count from public.teller_profiles where profile_id = '00000000-0000-0000-0000-0000000000b2'),
   2, '評価の投稿で review_count が更新される'
 );
 
--- 16. 平均: (5 + 4) / 2 = 4.50
+-- 19. 平均: (5 + 4) / 2 = 4.50
 select is(
   (select average_rating from public.teller_profiles where profile_id = '00000000-0000-0000-0000-0000000000b2'),
   4.50, '評価の投稿で average_rating が更新される'
 );
 
--- 17. 評価が消えるとキャッシュも再計算される(carol の評価を削除 → 1件)
+-- 20. 評価が消えるとキャッシュも再計算される(carol の評価を削除 → 1件)
 delete from public.reviews where session_id = '00000000-0000-0000-0000-000000000801';
 select is(
   (select review_count from public.teller_profiles where profile_id = '00000000-0000-0000-0000-0000000000b2'),
   1, '評価の削除で review_count が再計算される'
 );
 
--- 18. セッションを消すとレビューも連鎖削除される
+-- 21. セッションを消すとレビューも連鎖削除される
 delete from public.sessions where id = '00000000-0000-0000-0000-000000000806';
 select is(
   (select count(*)::int from public.reviews where session_id = '00000000-0000-0000-0000-000000000806'),
   0, 'sessions を削除すると reviews も連鎖削除される'
 );
 
--- 19. 連鎖削除でもキャッシュは再計算される(0件)
+-- 22. 連鎖削除でもキャッシュは再計算される(0件)
 select is(
   (select review_count from public.teller_profiles where profile_id = '00000000-0000-0000-0000-0000000000b2'),
   0, '連鎖削除でも review_count が再計算される'
 );
 
--- 20. 0件のとき平均は NULL
+-- 23. 0件のとき平均は NULL
 select is(
   (select average_rating from public.teller_profiles where profile_id = '00000000-0000-0000-0000-0000000000b2'),
   null, '評価が0件のとき average_rating は NULL'
 );
 
 -- ===== 制約(postgres 権限)=====
--- 21. 自分自身への評価は作れない
+-- 24. 自分自身への評価は作れない
 select throws_ok(
   $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating) values
      ('00000000-0000-0000-0000-000000000807', '00000000-0000-0000-0000-0000000000b2',
@@ -199,7 +222,7 @@ select throws_ok(
   '23514', null, '自分自身への評価は作れない'
 );
 
--- 22. rating は NOT NULL
+-- 25. rating は NOT NULL
 select throws_ok(
   $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating) values
      ('00000000-0000-0000-0000-000000000807', '00000000-0000-0000-0000-0000000000c1',
@@ -207,7 +230,7 @@ select throws_ok(
   '23502', null, 'rating は NULL にできない'
 );
 
--- 23. コメントは500文字まで入れられる
+-- 26. コメントは500文字まで入れられる
 select lives_ok(
   $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating, comment) values
      ('00000000-0000-0000-0000-000000000808', '00000000-0000-0000-0000-0000000000c1',
@@ -215,7 +238,7 @@ select lives_ok(
   'comment は500文字まで入れられる'
 );
 
--- 24. コメントは501文字以上にできない
+-- 27. コメントは501文字以上にできない
 select throws_ok(
   $$ insert into public.reviews (session_id, reviewer_id, reviewee_id, rating, comment) values
      ('00000000-0000-0000-0000-000000000807', '00000000-0000-0000-0000-0000000000c1',

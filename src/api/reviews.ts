@@ -9,15 +9,10 @@ type CreateReviewParams = {
 };
 
 // 占い師が受けたレビューを、新しい順に limit 件取得する。
-// 誰がどの占い師に相談したかが分からないよう、reviewer_id は取得しない（画面でも匿名で表示する）
+// reviews は当事者しか直接読めないため、公開用の RPC を使う。
+// RPC は誰がどの占い師に相談したかが分からないよう、reviewer_id・session_id を返さない（画面でも匿名で表示する）
 export async function listTellerReviews(tellerId: string, limit: number) {
-  return supabase
-    .from('reviews')
-    .select('id, rating, comment, created_at')
-    .eq('reviewee_id', tellerId)
-    .order('created_at', { ascending: false })
-    .order('id')
-    .limit(limit);
+  return supabase.rpc('list_teller_reviews', { p_teller_id: tellerId, p_limit: limit });
 }
 
 // セッションに付いたレビューを取得する（セッション詳細で、相談者・占い師の両方に見せる）。まだ無ければ data は null
