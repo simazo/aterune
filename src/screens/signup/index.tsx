@@ -1,9 +1,7 @@
 import { signUpWithEmail } from '@/api/auth';
-import { FilledInput } from '@/components/filled-input';
+import { FormTextField } from '@/components/form-text-field';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
-import { FormControl, FormControlError, FormControlErrorText } from '@/components/ui/form-control';
 import { Heading } from '@/components/ui/heading';
-import { InputField } from '@/components/ui/input';
 import { Link, LinkText } from '@/components/ui/link';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
@@ -12,25 +10,21 @@ import { getAuthErrorMessage } from '@/utils/auth-error';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { signupSchema, type SignupFormValues } from './schema';
 
 export function Signup() {
   const router = useRouter();
   const showError = useErrorToast();
-  const [loading, setLoading] = useState(false);
+  const [isSigningUp, setIsSigningUp] = useState(false);
   const [signUpEmailSent, setSignUpEmailSent] = useState(false);
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<SignupFormValues>({
+  const { control, handleSubmit } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
     defaultValues: { displayName: '', email: '', password: '' },
   });
 
   async function onSubmit({ displayName, email, password }: SignupFormValues) {
-    setLoading(true);
+    setIsSigningUp(true);
 
     const { error } = await signUpWithEmail(email, password, displayName);
 
@@ -40,7 +34,7 @@ export function Signup() {
       // Confirm email必須のため、この時点ではセッションはまだ確立しない
       setSignUpEmailSent(true);
     }
-    setLoading(false);
+    setIsSigningUp(false);
   }
 
   if (signUpEmailSent) {
@@ -63,71 +57,20 @@ export function Signup() {
         新規登録
       </Heading>
 
-      <Controller
-        control={control}
-        name="displayName"
-        render={({ field: { value, onChange, onBlur } }) => (
-          <FormControl isInvalid={!!errors.displayName}>
-            <FilledInput>
-              <InputField
-                placeholder="表示名"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-              />
-            </FilledInput>
-            <FormControlError>
-              <FormControlErrorText>{errors.displayName?.message}</FormControlErrorText>
-            </FormControlError>
-          </FormControl>
-        )}
-      />
+      <FormTextField control={control} name="displayName" placeholder="表示名" />
 
-      <Controller
+      <FormTextField
         control={control}
         name="email"
-        render={({ field: { value, onChange, onBlur } }) => (
-          <FormControl isInvalid={!!errors.email}>
-            <FilledInput>
-              <InputField
-                placeholder="メールアドレス"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
-            </FilledInput>
-            <FormControlError>
-              <FormControlErrorText>{errors.email?.message}</FormControlErrorText>
-            </FormControlError>
-          </FormControl>
-        )}
+        placeholder="メールアドレス"
+        autoCapitalize="none"
+        keyboardType="email-address"
       />
 
-      <Controller
-        control={control}
-        name="password"
-        render={({ field: { value, onChange, onBlur } }) => (
-          <FormControl isInvalid={!!errors.password}>
-            <FilledInput>
-              <InputField
-                placeholder="パスワード"
-                value={value}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                secureTextEntry
-              />
-            </FilledInput>
-            <FormControlError>
-              <FormControlErrorText>{errors.password?.message}</FormControlErrorText>
-            </FormControlError>
-          </FormControl>
-        )}
-      />
+      <FormTextField control={control} name="password" placeholder="パスワード" secureTextEntry />
 
-      <Button onPress={handleSubmit(onSubmit)} isDisabled={loading} className="mt-2">
-        {loading ? <ButtonSpinner /> : <ButtonText>新規登録</ButtonText>}
+      <Button onPress={handleSubmit(onSubmit)} isDisabled={isSigningUp} className="mt-2">
+        {isSigningUp ? <ButtonSpinner /> : <ButtonText>新規登録</ButtonText>}
       </Button>
 
       <Link onPress={() => router.replace('/login')}>
