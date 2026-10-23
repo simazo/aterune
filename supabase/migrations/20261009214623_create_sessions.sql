@@ -7,7 +7,7 @@ create table public.sessions (
   applicant_id      uuid not null references auth.users (id) on delete cascade,
   recipient_id      uuid not null references auth.users (id) on delete cascade,
   consultant_id     uuid not null references auth.users (id) on delete cascade,
-  teller_id         uuid not null references public.teller_profiles (profile_id),
+  teller_id         uuid not null references public.profiles (id) on delete cascade,
   initiated_by      text not null,
   status            text not null default 'pending',
   concern_tag_id    uuid references public.tags (id),
@@ -43,7 +43,7 @@ comment on column public.sessions.id                is 'セッションID';
 comment on column public.sessions.applicant_id      is '申込んだ側のユーザーID';
 comment on column public.sessions.recipient_id      is '申込まれた側のユーザーID';
 comment on column public.sessions.consultant_id     is '相談者側のユーザーID(申込みの方向に関わらず常に相談者)';
-comment on column public.sessions.teller_id         is '占い師側のユーザーID(申込みの方向に関わらず常に占い師)';
+comment on column public.sessions.teller_id         is '占い師側のユーザーID(申込みの方向に関わらず常に占い師。作成時に占い師登録があることをトリガーで確かめる。占い師をやめても履歴として残る)';
 comment on column public.sessions.initiated_by      is '申込みの起点(consultant=相談者から、teller=占い師から(お悩み投稿への応募))';
 comment on column public.sessions.status            is 'pending=承認待ち / active=進行中 / completed=相談者の完了操作 / auto_completed=相談者側の無操作による自動完了 / rejected=拒否 / expired=申込みの期限切れ';
 comment on column public.sessions.concern_tag_id    is '悩みタグのID(お悩み投稿経由の場合は投稿からコピー。相談者からの申込みでは NULL)';
@@ -140,7 +140,7 @@ begin
       from public.teller_profiles
      where profile_id = new.teller_id;
 
-    -- 存在しない teller_id は外部キーが弾く
+    -- 占い師登録のない teller_id は check_session_teller が弾く
     if found then
       if not v_is_accepting then
         raise exception 'the teller is not accepting session requests';
@@ -169,6 +169,57 @@ begin
   end if;
 
   return new;
+end;
+$$;
+
+-- 占い師側は、作成時に占い師登録(teller_profiles)がある人だけにする。
+-- teller_id の外部キーは、占い師をやめても履歴を残すため profiles を参照しているので、ここで確かめる。
+-- 占い師をやめる操作(guard_teller_profile_delete)と同時に申し込まれても、登録のない人宛ての
+-- セッションが残らないよう、外部キーと同じく for key share で行をロックする。
+-- ロックには行の update 権限が要り、RLS では本人しか通らないため security definer を付ける
+create function public.check_session_teller()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform 1 from public.teller_profiles
+   where profile_id = new.teller_id
+     for key share;
+
+  if not found then
+    raise exception 'the teller is not registered';
+  end if;
+
+  return new;
+end;
+$$;
+
+-- 占い師をやめる(teller_profiles の削除)のは、進行中か期限内の承認待ちのセッションが無いときだけにする。
+-- 期限切れの pending は、定期処理で expired になる前でも数えない。
+-- 期限ちょうど(expires_at = now())は、承認・拒否できる間(guard_session_status_change)に合わせて数える。
+-- 退会(auth.users の削除)の連鎖削除では profiles が先に消えているので、確かめずに通す(退会を止めないため)。
+-- 占い師本人は RLS で自分のセッションを読めるので、security definer は付けない
+create function public.guard_teller_profile_delete()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if not exists (select 1 from public.profiles where id = old.profile_id) then
+    return old;
+  end if;
+
+  if exists (
+    select 1 from public.sessions
+     where teller_id = old.profile_id
+       and (status = 'active' or (status = 'pending' and expires_at >= now()))
+  ) then
+    raise exception 'the teller has open sessions';
+  end if;
+
+  return old;
 end;
 $$;
 
@@ -313,6 +364,8 @@ $$;
 -- トリガー専用関数: Supabase が anon / authenticated に自動付与する権限も外す
 revoke all on function public.check_session_post()           from public, anon, authenticated;
 revoke all on function public.check_session_request()        from public, anon, authenticated;
+revoke all on function public.check_session_teller()         from public, anon, authenticated;
+revoke all on function public.guard_teller_profile_delete()  from public, anon, authenticated;
 revoke all on function public.copy_post_content_to_session() from public, anon, authenticated;
 revoke all on function public.guard_session_status_change()  from public, anon, authenticated;
 revoke all on function public.sync_post_status()             from public, anon, authenticated;
@@ -329,6 +382,10 @@ create trigger sessions_check_post
 create trigger sessions_check_request
   before insert on public.sessions
   for each row execute function public.check_session_request();
+
+create trigger sessions_check_teller
+  before insert on public.sessions
+  for each row execute function public.check_session_teller();
 
 create trigger sessions_copy_post_content
   before insert on public.sessions
@@ -349,6 +406,11 @@ create trigger sessions_sync_post_status
 create trigger sessions_update_teller_session_count
   after insert or update of status or delete on public.sessions
   for each row execute function public.update_teller_session_count();
+
+-- sessions を読むため、teller_profiles 側のトリガーもこのファイルに置く
+create trigger teller_profiles_guard_delete
+  before delete on public.teller_profiles
+  for each row execute function public.guard_teller_profile_delete();
 
 -- ============================================================
 -- RLS・GRANT

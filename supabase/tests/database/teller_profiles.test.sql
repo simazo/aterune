@@ -1,5 +1,5 @@
 begin;
-select plan(26);
+select plan(37);
 
 -- ---------- 準備 ----------
 -- profiles は handle_new_user のトリガーで自動作成される
@@ -203,6 +203,142 @@ select lives_ok(
   $$ delete from auth.users
        where id = '00000000-0000-0000-0000-0000000000c2' $$,
   '占い師のユーザーを削除しても、連鎖削除がエラーにならない'
+);
+
+-- ---------- 27-37. セッションがある占い師がやめるとき ----------
+-- dana(d1)=相談者 / d2〜d7=占い師(セッションの状態ごとに分ける)
+insert into auth.users (id, aud, role, email) values
+  ('00000000-0000-0000-0000-0000000000d1', 'authenticated', 'authenticated', 'dana@example.com'),
+  ('00000000-0000-0000-0000-0000000000d2', 'authenticated', 'authenticated', 'teller-finished@example.com'),
+  ('00000000-0000-0000-0000-0000000000d3', 'authenticated', 'authenticated', 'teller-active@example.com'),
+  ('00000000-0000-0000-0000-0000000000d4', 'authenticated', 'authenticated', 'teller-pending@example.com'),
+  ('00000000-0000-0000-0000-0000000000d5', 'authenticated', 'authenticated', 'teller-applied@example.com'),
+  ('00000000-0000-0000-0000-0000000000d6', 'authenticated', 'authenticated', 'teller-expired@example.com'),
+  ('00000000-0000-0000-0000-0000000000d7', 'authenticated', 'authenticated', 'teller-withdraw@example.com');
+
+insert into public.teller_profiles (profile_id) values
+  ('00000000-0000-0000-0000-0000000000d2'),
+  ('00000000-0000-0000-0000-0000000000d3'),
+  ('00000000-0000-0000-0000-0000000000d4'),
+  ('00000000-0000-0000-0000-0000000000d5'),
+  ('00000000-0000-0000-0000-0000000000d6'),
+  ('00000000-0000-0000-0000-0000000000d7');
+
+-- seed に依存しないよう、テスト用の悩みタグと dana のお悩み投稿を作る
+insert into public.tags (id, category, slug, name) values
+  ('00000000-0000-0000-0000-0000000000e1', 'concern', 'test-concern-a', 'テスト悩みA');
+
+insert into public.consultation_posts (id, consultant_id, concern_tag_id, concern) values
+  ('00000000-0000-0000-0000-000000000a01', '00000000-0000-0000-0000-0000000000d1',
+   '00000000-0000-0000-0000-0000000000e1', 'danaの悩み');
+
+-- d2: 終わったセッションだけ / d3: active / d4: 期限内の pending(相談者から)/ d6: 期限切れの pending / d7: active
+insert into public.sessions
+  (id, applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern, status, expires_at)
+select v.id, '00000000-0000-0000-0000-0000000000d1', v.teller,
+       '00000000-0000-0000-0000-0000000000d1', v.teller, 'consultant', 'x', v.status, v.expires_at
+  from (values
+    ('00000000-0000-0000-0000-000000000d21'::uuid, '00000000-0000-0000-0000-0000000000d2'::uuid, 'completed',      now() + interval '48 hours'),
+    ('00000000-0000-0000-0000-000000000d22'::uuid, '00000000-0000-0000-0000-0000000000d2'::uuid, 'auto_completed', now() + interval '48 hours'),
+    ('00000000-0000-0000-0000-000000000d23'::uuid, '00000000-0000-0000-0000-0000000000d2'::uuid, 'rejected',       now() + interval '48 hours'),
+    ('00000000-0000-0000-0000-000000000d24'::uuid, '00000000-0000-0000-0000-0000000000d2'::uuid, 'expired',        now() + interval '48 hours'),
+    ('00000000-0000-0000-0000-000000000d31'::uuid, '00000000-0000-0000-0000-0000000000d3'::uuid, 'active',         now() + interval '48 hours'),
+    ('00000000-0000-0000-0000-000000000d41'::uuid, '00000000-0000-0000-0000-0000000000d4'::uuid, 'pending',        now() + interval '48 hours'),
+    ('00000000-0000-0000-0000-000000000d61'::uuid, '00000000-0000-0000-0000-0000000000d6'::uuid, 'pending',        now() - interval '1 hour'),
+    ('00000000-0000-0000-0000-000000000d71'::uuid, '00000000-0000-0000-0000-0000000000d7'::uuid, 'active',         now() + interval '48 hours')
+  ) as v (id, teller, status, expires_at);
+
+-- d5: dana の投稿への応募(期限内の pending)
+insert into public.sessions
+  (id, applicant_id, recipient_id, consultant_id, teller_id, initiated_by, post_id)
+values
+  ('00000000-0000-0000-0000-000000000d51', '00000000-0000-0000-0000-0000000000d5', '00000000-0000-0000-0000-0000000000d1',
+   '00000000-0000-0000-0000-0000000000d1', '00000000-0000-0000-0000-0000000000d5', 'teller',
+   '00000000-0000-0000-0000-000000000a01');
+
+insert into public.messages (session_id, sender_id, content) values
+  ('00000000-0000-0000-0000-000000000d21', '00000000-0000-0000-0000-0000000000d1', 'ありがとうございました');
+
+select has_trigger('public', 'teller_profiles', 'teller_profiles_guard_delete',
+  'teller_profiles に、やめるときのガード用のトリガーが付いている');
+
+select lives_ok(
+  $$ delete from public.teller_profiles
+       where profile_id = '00000000-0000-0000-0000-0000000000d2' $$,
+  '終わったセッション(completed / auto_completed / rejected / expired)しかなければ、占い師をやめられる'
+);
+
+set local role authenticated;
+set local request.jwt.claims =
+  '{"sub":"00000000-0000-0000-0000-0000000000d1","role":"authenticated"}';
+
+select is(
+  (select count(*)::int from public.sessions
+    where teller_id = '00000000-0000-0000-0000-0000000000d2'),
+  4,
+  '占い師がやめたあとも、相談者はそのセッションを読める'
+);
+
+select is(
+  (select count(*)::int from public.messages
+    where session_id = '00000000-0000-0000-0000-000000000d21'),
+  1,
+  '占い師がやめたあとも、相談者はそのセッションのメッセージを読める'
+);
+
+set local request.jwt.claims =
+  '{"sub":"00000000-0000-0000-0000-0000000000d2","role":"authenticated"}';
+
+select is(
+  (select count(*)::int from public.sessions
+    where teller_id = '00000000-0000-0000-0000-0000000000d2'),
+  4,
+  '占い師をやめたあとも、本人は自分の過去のセッションを読める'
+);
+
+reset role;
+
+select throws_ok(
+  $$ delete from public.teller_profiles
+       where profile_id = '00000000-0000-0000-0000-0000000000d3' $$,
+  'P0001',
+  null,
+  '進行中(active)のセッションがあれば、占い師をやめられない'
+);
+
+select throws_ok(
+  $$ delete from public.teller_profiles
+       where profile_id = '00000000-0000-0000-0000-0000000000d4' $$,
+  'P0001',
+  null,
+  '相談者からの期限内の申込み(pending)があれば、占い師をやめられない'
+);
+
+select throws_ok(
+  $$ delete from public.teller_profiles
+       where profile_id = '00000000-0000-0000-0000-0000000000d5' $$,
+  'P0001',
+  null,
+  'お悩み投稿への期限内の応募(pending)があれば、占い師をやめられない'
+);
+
+select lives_ok(
+  $$ delete from public.teller_profiles
+       where profile_id = '00000000-0000-0000-0000-0000000000d6' $$,
+  '期限切れの pending しかなければ、定期処理で expired になる前でも占い師をやめられる'
+);
+
+select lives_ok(
+  $$ delete from auth.users
+       where id = '00000000-0000-0000-0000-0000000000d7' $$,
+  '進行中のセッションがあっても、占い師のユーザーは退会できる'
+);
+
+select is(
+  (select count(*)::int from public.sessions
+    where id = '00000000-0000-0000-0000-000000000d71'),
+  0,
+  '退会すると、その占い師のセッションも消える'
 );
 
 select * from finish();

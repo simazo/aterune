@@ -363,8 +363,8 @@ export type Database = {
             foreignKeyName: "sessions_teller_id_fkey"
             columns: ["teller_id"]
             isOneToOne: false
-            referencedRelation: "teller_profiles"
-            referencedColumns: ["profile_id"]
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }

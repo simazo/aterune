@@ -1,5 +1,5 @@
 begin;
-select plan(74);
+select plan(75);
 
 -- ===== テストデータ(postgres 権限) =====
 -- alice=占い師でもある相談者 / bob=占い師 / carol=占い師ではない一般ユーザー / dave=占い師(完了数・制約用)
@@ -158,21 +158,12 @@ select throws_ok(
   '42501', null, 'insert 時に expires_at は指定できない'
 );
 
--- 12. initiated_by と申込者の役割が食い違う行は作れない(相談者からの申込みなのに、申込者が占い師側)
--- (CHECK 制約は BEFORE トリガーの後に確かめられるため、二重申込みに当たらない dave との組み合わせにする)
-select throws_ok(
-  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern)
-     values ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f4',
-             '00000000-0000-0000-0000-0000000000f4', '00000000-0000-0000-0000-0000000000f3', 'consultant', 'x') $$,
-  '23514', null, 'initiated_by と申込者の役割が食い違う行は作れない'
-);
-
--- 13. 占い師でない人は占い師側になれない(外部キー)
+-- 13. 占い師でない人は占い師側になれない(check_session_teller)
 select throws_ok(
   $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern)
      values ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f0',
              '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f0', 'consultant', 'x') $$,
-  '23503', null, '占い師でない人は teller_id になれない'
+  'P0001', 'the teller is not registered', '占い師でない人は teller_id になれない'
 );
 
 -- 14. concern は更新できない(update は status 列のみ)
@@ -228,6 +219,16 @@ select lives_ok(
      values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f6',
              '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f6', 'consultant', '占い師aliceの相談') $$,
   '占い師が相談者として別の占い師に申し込める'
+);
+
+-- 12. initiated_by と申込者の役割が食い違う行は作れない(相談者からの申込みなのに、申込者が占い師側)
+-- (CHECK 制約は BEFORE トリガーの後に確かめられるため、占い師登録のある alice を占い師側にし、
+--   二重申込みに当たらない dave との組み合わせにする)
+select throws_ok(
+  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern)
+     values ('00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f4',
+             '00000000-0000-0000-0000-0000000000f4', '00000000-0000-0000-0000-0000000000f1', 'consultant', 'x') $$,
+  '23514', null, 'initiated_by と申込者の役割が食い違う行は作れない'
 );
 reset role;
 
@@ -366,6 +367,14 @@ select throws_ok(
              '00000000-0000-0000-0000-0000000000f1', '00000000-0000-0000-0000-0000000000f4', 'teller',
              '00000000-0000-0000-0000-000000000a01') $$,
   '23514', null, '占い師からの申込みで、申込者が相談者側の行は作れない'
+);
+
+-- 75. 終了済みの行でも、占い師でない人は占い師側になれない(申込みのルールを確かめない行も弾く)
+select throws_ok(
+  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern, status)
+     values ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f0',
+             '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000f0', 'consultant', 'x', 'completed') $$,
+  'P0001', 'the teller is not registered', 'システムからの登録でも、占い師でない人は teller_id になれない'
 );
 
 -- 30. システムは pending → expired にできる
