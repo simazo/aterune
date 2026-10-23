@@ -32,7 +32,7 @@ export function Signup() {
   async function onSubmit({ displayName, email, password }: SignupFormValues) {
     setLoading(true);
 
-    const { error } = await signUpWithEmail(email, password, displayName.trim());
+    const { error } = await signUpWithEmail(email, password, displayName);
 
     if (error) {
       showError(getAuthErrorMessage(error));
