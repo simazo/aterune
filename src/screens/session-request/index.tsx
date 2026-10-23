@@ -1,6 +1,6 @@
 import { getMyBirthdate } from '@/api/profile-private-details';
 import { getTeller } from '@/api/tellers';
-import { ScrollView } from '@/components/ui/scroll-view';
+import { KeyboardAwareScrollView } from '@/components/keyboard-aware-scroll-view';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
@@ -95,11 +95,7 @@ export function SessionRequest({ tellerId }: Props) {
   return (
     <VStack className="flex-1 bg-background">
       {header}
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="p-4"
-        keyboardShouldPersistTaps="handled"
-      >
+      <KeyboardAwareScrollView className="flex-1" contentContainerClassName="p-4">
         {/* 広い画面（Web）で横に間延びしないよう、幅を抑えて中央に置く */}
         <VStack className="w-full max-w-2xl self-center">
           <SessionRequestForm
@@ -108,7 +104,7 @@ export function SessionRequest({ tellerId }: Props) {
             savedBirthdate={savedBirthdate}
           />
         </VStack>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </VStack>
   );
 }

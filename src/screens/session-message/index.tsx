@@ -1,5 +1,6 @@
 import { sendMessage } from '@/api/messages';
 import { FilledTextarea } from '@/components/filled-textarea';
+import { KeyboardAwareScrollView } from '@/components/keyboard-aware-scroll-view';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
 import {
   FormControl,
@@ -8,7 +9,6 @@ import {
   FormControlHelper,
   FormControlHelperText,
 } from '@/components/ui/form-control';
-import { ScrollView } from '@/components/ui/scroll-view';
 import { TextareaInput } from '@/components/ui/textarea';
 import { VStack } from '@/components/ui/vstack';
 import { useAuth } from '@/hooks/use-auth';
@@ -63,7 +63,7 @@ export function SessionMessage({ sessionId }: Props) {
   }
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4">
+    <KeyboardAwareScrollView className="flex-1 bg-background" contentContainerClassName="p-4">
       {/* ヘッダーは (app) の Stack で非表示にしているため、この画面だけ表示する。戻るボタンは矢印だけにする */}
       <Stack.Screen
         options={{
@@ -103,6 +103,6 @@ export function SessionMessage({ sessionId }: Props) {
           {isSubmitting ? <ButtonSpinner /> : <ButtonText>送信する</ButtonText>}
         </Button>
       </VStack>
-    </ScrollView>
+    </KeyboardAwareScrollView>
   );
 }

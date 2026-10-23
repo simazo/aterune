@@ -1,6 +1,6 @@
 import { getSessionReview } from '@/api/reviews';
 import { getSession } from '@/api/sessions';
-import { ScrollView } from '@/components/ui/scroll-view';
+import { KeyboardAwareScrollView } from '@/components/keyboard-aware-scroll-view';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
@@ -106,11 +106,7 @@ export function SessionReview({ sessionId }: Props) {
   return (
     <VStack className="flex-1 bg-background">
       {header}
-      <ScrollView
-        className="flex-1"
-        contentContainerClassName="p-4"
-        keyboardShouldPersistTaps="handled"
-      >
+      <KeyboardAwareScrollView className="flex-1" contentContainerClassName="p-4">
         {/* 広い画面（Web）で横に間延びしないよう、幅を抑えて中央に置く */}
         <VStack space="lg" className="w-full max-w-2xl self-center">
           <VStack space="xs">
@@ -122,7 +118,7 @@ export function SessionReview({ sessionId }: Props) {
           </VStack>
           <ReviewForm sessionId={sessionId} consultantId={userId} tellerId={session.teller_id} />
         </VStack>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </VStack>
   );
 }
