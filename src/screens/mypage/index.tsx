@@ -11,6 +11,7 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAuth } from '@/hooks/use-auth';
 import { useErrorToast } from '@/hooks/use-error-toast';
+import { logger } from '@/lib/logger';
 import type { Profile } from '@/types';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
@@ -24,7 +25,7 @@ export function MyPage() {
   const userId = session?.user.id;
   const [profile, setProfile] = useState<MyProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [loading, setLoading] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   // プロフィール編集から戻ったときに新しい内容を出すため、画面が表示されるたびに読み直す
   useFocusEffect(
@@ -52,9 +53,21 @@ export function MyPage() {
   );
 
   async function handleSignOut() {
-    setLoading(true);
-    await signOut();
-    setLoading(false);
+    setIsSigningOut(true);
+    try {
+      const { error } = await signOut();
+      // error が返っても、端末側のログイン状態は消えていてログイン画面に移る（消えないのはサーバー側だけ）。
+      // ユーザーから見るとログアウトできているので、伝えずに記録だけする
+      if (error) {
+        logger.warn('ログアウトのエラー:', error.message);
+      }
+    } catch (e) {
+      // 想定外の例外では、ログイン状態が残っているか分からないので、もう一度押してもらう
+      logger.warn('ログアウト中に例外:', e instanceof Error ? e.message : e);
+      showError('ログアウトできませんでした');
+    } finally {
+      setIsSigningOut(false);
+    }
   }
 
   if (isLoading) {
@@ -132,8 +145,8 @@ export function MyPage() {
           <Text size="sm" className="text-muted-foreground">
             ログイン中: {session?.user.email}
           </Text>
-          <Button variant="secondary" onPress={handleSignOut} isDisabled={loading}>
-            {loading ? <ButtonSpinner /> : <ButtonText>ログアウト</ButtonText>}
+          <Button variant="secondary" onPress={handleSignOut} isDisabled={isSigningOut}>
+            {isSigningOut ? <ButtonSpinner /> : <ButtonText>ログアウト</ButtonText>}
           </Button>
         </VStack>
       </VStack>
