@@ -9,7 +9,7 @@
 -- p_accepting_only が true なら受付中(is_accepting)の占い師だけ。false なら受付停止中も含む。
 -- p_sort の並び順(同じ値どうしは占い師登録の新しい順):
 --   ・newest:   占い師登録の新しい順(既定)
---   ・rating:   平均評価の高い順。評価がまだ無い占い師は最後
+--   ・rating:   レビュー数を加味した評価(ベイズ平均。order by の説明を参照)の高い順。評価がまだ無い占い師は最後
 --   ・sessions: 完了セッション数の多い順
 -- 結果の tags は、絞り込みに使ったタグだけでなく、その占い師の全タグ。
 -- 中身と並びは list_teller_tags_json が決める(get_teller と共通)。
@@ -70,9 +70,17 @@ as $$
        where tt.teller_id = tp.profile_id
          and t.slug = any (p_tag_slugs)
     )
-  -- 指定していない並び順の case は全員 null になり、順序に影響しない
+  -- 指定していない並び順の case は全員 null になり、順序に影響しない。
+  -- 評価順は、レビュー数の少ない占い師の点が大きく振れないよう、ベイズ平均で並べる:
+  --   (C × m + 評価の合計) ÷ (C + レビュー数)。評価の合計は average_rating × review_count
+  --   (average_rating は小数2桁に丸めた値なので近似。並び順には影響しない程度)。
+  --   m(基準の点)= 4.0:件数の少ないうちは全体の平均がぶれやすいため固定値にする。
+  --   C(仮のレビュー件数)= 3:駆け出しが中心でレビューが少ないため、数件で本人の平均が反映されるようにする。
+  -- レビューが無い占い師は average_rating が null なので、結果も null になり最後に並ぶ。
+  -- カードに出す評価は average_rating のまま(並び順にだけ使う)
   order by
-    case when p_sort = 'rating'   then tp.average_rating end desc nulls last,
+    case when p_sort = 'rating'
+         then (3 * 4.0 + tp.average_rating * tp.review_count) / (3 + tp.review_count) end desc nulls last,
     case when p_sort = 'sessions' then tp.session_count  end desc nulls last,
     tp.created_at desc,
     tp.profile_id;

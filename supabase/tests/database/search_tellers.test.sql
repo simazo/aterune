@@ -1,5 +1,5 @@
 begin;
-select plan(24);
+select plan(25);
 
 -- ===== テストデータ(postgres 権限)=====
 -- seed に依存しないよう、タグ・占い師はすべてここで作る。結果はテストの占い師(d1〜d4)に絞って確かめる
@@ -24,7 +24,9 @@ insert into public.teller_profiles (profile_id, self_pr, training_period, is_acc
 --   d2:  3.00  1           10            3日前
 --   d3:  なし  0           0             2日前
 --   d4:  4.50  1           3             1日前
--- 新着順: d4, d3, d2, d1 / 評価順: d4, d1(同点は新しい順), d2, d3(評価なしは最後)
+-- 評価順はベイズ平均 (3 × 4.0 + 平均 × レビュー数) ÷ (3 + レビュー数) の高い順:
+--   d1: (12 + 9.0) ÷ 5 = 4.20 / d4: (12 + 4.5) ÷ 4 = 4.125 / d2: (12 + 3.0) ÷ 4 = 3.75
+-- 新着順: d4, d3, d2, d1 / 評価順: d1, d4(平均は同じでもレビュー数の多い方が上), d2, d3(評価なしは最後)
 -- セッション数順: d2, d4, d1(同数は新しい順), d3
 update public.teller_profiles as tp
    set average_rating = v.average_rating,
@@ -248,12 +250,12 @@ select results_eq(
 select results_eq(
   $$ select teller_id from public.search_tellers('{}', false, 'rating') where teller_id in (select id from test_tellers) $$,
   array[
-    '00000000-0000-0000-0000-0000000000d4',
     '00000000-0000-0000-0000-0000000000d1',
+    '00000000-0000-0000-0000-0000000000d4',
     '00000000-0000-0000-0000-0000000000d2',
     '00000000-0000-0000-0000-0000000000d3'
   ]::uuid[],
-  'rating なら、平均評価の高い順に並ぶ(同点は新しい順、評価なしは最後)'
+  'rating なら、レビュー数を加味した評価(ベイズ平均)の高い順に並ぶ(評価なしは最後)'
 );
 
 -- 21. セッション数順
@@ -301,6 +303,32 @@ select set_eq(
   'ログイン中でも、自分を除いたうえでタグで絞り込む'
 );
 
+reset role;
+
+-- 25. 平均が高くてもレビューの少ない占い師は、平均がやや低くてもレビューの多い占い師より下に来る。
+--     d4 を 5.0・1件、d2 を 4.8・20件にすると、d2: (12 + 96) ÷ 23 ≒ 4.70 / d4: (12 + 5) ÷ 4 = 4.25 / d1: 4.20
+update public.teller_profiles as tp
+   set average_rating = v.average_rating,
+       review_count   = v.review_count
+  from (values
+    ('00000000-0000-0000-0000-0000000000d2'::uuid, 4.80, 20),
+    ('00000000-0000-0000-0000-0000000000d4'::uuid, 5.00, 1)
+  ) as v (profile_id, average_rating, review_count)
+ where tp.profile_id = v.profile_id;
+
+-- 23-24 で入れた d1 の JWT が残っていると d1 が「自分自身」として除かれるため、未ログインに戻す
+select set_config('request.jwt.claims', '', true);
+set local role anon;
+select results_eq(
+  $$ select teller_id from public.search_tellers('{}', false, 'rating') where teller_id in (select id from test_tellers) $$,
+  array[
+    '00000000-0000-0000-0000-0000000000d2',
+    '00000000-0000-0000-0000-0000000000d4',
+    '00000000-0000-0000-0000-0000000000d1',
+    '00000000-0000-0000-0000-0000000000d3'
+  ]::uuid[],
+  'rating なら、平均 5.0・1件の占い師は、平均 4.8・20件の占い師より下に来る'
+);
 reset role;
 
 select * from finish();
