@@ -18,7 +18,22 @@ npx supabase db push           # 未適用のマイグレーションをリモ�
 npx supabase db reset --linked # リモートを全消去して全マイグレーションを再適用（開発段階のみ）
 # リモートで pgTAP テスト（--linked は不可。パスワードはダッシュボードの Database 設定を参照）
 npx supabase test db --db-url "postgresql://postgres.kwjgxjtsyjzajdcaqnpd:<DBパスワード>@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres"
+npx supabase functions deploy send-push  # Edge Function の反映（verify_jwt は config.toml の設定が使われる）
 ```
+
+### プッシュ送信のシークレット
+`db reset --linked` で Vault も消えるため、リセットのたびに SQL Editor で登録し直す。`send_push_secret` と Edge Function の `SEND_PUSH_SECRET` は同じ値にする（`openssl rand -hex 32` などで作る）。
+
+```sql
+select vault.create_secret('https://kwjgxjtsyjzajdcaqnpd.supabase.co', 'project_url');
+select vault.create_secret('<ランダムな値>', 'send_push_secret');
+```
+
+```bash
+npx supabase secrets set SEND_PUSH_SECRET=<上と同じ値>  # Edge Function の secrets（リセットでは消えない）
+```
+
+ローカルで試すときは、`supabase/functions/.env`（gitignore 済み）に `SEND_PUSH_SECRET` を書いて `npx supabase functions serve send-push --env-file supabase/functions/.env` で起動し、Vault の `project_url` は DB のコンテナから届く `http://supabase_kong_aterune:8000` にする。
 
 ## 命名規則
 - 識別子はすべて snake_case で、引用符で囲まない（ポリシー名も含む）。
