@@ -1,5 +1,5 @@
 -- sessions の変化に応じて notifications の行を作るトリガー。
--- 外部への送信(プッシュ通知の Webhook)は別途、Vault + pg_net で作る。
+-- プッシュ送信は notifications のトリガー(send_push_notification)が行う。
 
 -- 申込みが作られたら、申込まれた側に通知
 create function public.notify_session_request_received()
