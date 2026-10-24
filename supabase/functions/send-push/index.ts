@@ -130,13 +130,13 @@ Deno.serve(async (req) => {
     return fail(500, `unknown notification type: ${notification.type}`);
   }
   const { title, body } = buildMessage(partner?.display_name ?? "退会したユーザー");
-  // アプリはタップされたとき session_id から開く画面を決める
+  // アプリはタップされたとき session_id から開く画面を決め、recipient_id がログイン中のユーザーと違えば開かない
   // Expo Push API は1回100件までだが、1人の端末がそれを超えることはないので分けずに送る
   const messages = tokens.map(({ expo_push_token }) => ({
     to: expo_push_token,
     title,
     body,
-    data: { session_id: notification.session_id },
+    data: { session_id: notification.session_id, recipient_id: notification.recipient_id },
     sound: "default",
   }));
 

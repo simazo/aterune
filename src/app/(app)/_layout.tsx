@@ -1,4 +1,5 @@
 import { useAuth } from '@/hooks/use-auth';
+import { useNotificationResponse } from '@/hooks/use-notification-response';
 import { Redirect, Stack } from 'expo-router';
 
 // 占い師詳細などを URL から直接開いたとき（Web の再読み込み・ディープリンク）も、
@@ -10,6 +11,7 @@ export const unstable_settings = {
 
 export default function AppLayout() {
   const { session } = useAuth();
+  useNotificationResponse(session?.user.id);
 
   if (!session) {
     return <Redirect href="/login" />;

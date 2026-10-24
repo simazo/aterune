@@ -1,7 +1,9 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { logger } from './logger';
 import {
+  dismissPushNotifications,
   getCurrentPlatform,
   getPushTokenIfPermittedAsync,
   registerForPushNotificationsAsync,
@@ -13,6 +15,11 @@ jest.mock('expo-notifications', () => ({
   getPermissionsAsync: jest.fn(),
   requestPermissionsAsync: jest.fn(),
   getExpoPushTokenAsync: jest.fn(),
+  dismissAllNotificationsAsync: jest.fn(),
+}));
+
+jest.mock('./logger', () => ({
+  logger: { warn: jest.fn() },
 }));
 
 // __esModule を付けないと import * 側でコピーされ、replaceProperty の差し替えが push-notifications.ts に届かない
@@ -24,6 +31,7 @@ jest.mock('expo-constants', () => ({
 
 const TOKEN = 'ExponentPushToken[test]';
 const mockNotifications = jest.mocked(Notifications);
+const mockLogger = jest.mocked(logger);
 
 afterEach(() => {
   // replacePropertyで差し替えたPlatform.OSやDevice.isDeviceを元に戻す
@@ -106,6 +114,29 @@ describe('getPushTokenIfPermittedAsync', () => {
 
     await expect(getPushTokenIfPermittedAsync()).resolves.toBeNull();
     expect(mockNotifications.getPermissionsAsync).not.toHaveBeenCalled();
+  });
+});
+
+describe('dismissPushNotifications', () => {
+  it('通知欄に出ているこのアプリの通知をすべて消す', async () => {
+    await dismissPushNotifications();
+
+    expect(mockNotifications.dismissAllNotificationsAsync).toHaveBeenCalled();
+  });
+
+  it('消すのに失敗しても例外を投げず、warnでログを出す', async () => {
+    mockNotifications.dismissAllNotificationsAsync.mockRejectedValue(new Error('failed'));
+
+    await expect(dismissPushNotifications()).resolves.toBeUndefined();
+    expect(mockLogger.warn).toHaveBeenCalledWith('通知欄の通知を消す処理で例外:', 'failed');
+  });
+
+  it('Web版では何もしない', async () => {
+    jest.replaceProperty(Platform, 'OS', 'web');
+
+    await dismissPushNotifications();
+
+    expect(mockNotifications.dismissAllNotificationsAsync).not.toHaveBeenCalled();
   });
 });
 

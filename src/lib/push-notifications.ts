@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { logger } from './logger';
 
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
   // Web版は未対応（app.jsonにVAPID公開鍵の設定が必要なため）
@@ -63,6 +64,35 @@ async function fetchExpoPushToken(): Promise<string> {
   const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
 
   return tokenData.data; // 例："ExponentPushToken[xxxxxxxxxxxx]"
+}
+
+// アプリが前面にあるときも通知を出す（設定しないと、前面では何も表示されない）
+// Android は shouldPlaySound を false にすると、上から出るバナーも出なくなる
+export function setForegroundNotificationHandler() {
+  // Web版はプッシュ通知を受け取らない（push tokenを登録していない）
+  if (Platform.OS === 'web') return;
+
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
+
+// 通知欄に出ているこのアプリの通知をすべて消す（ログアウト時に、前のアカウントの通知が見えたままにならないように）
+// 失敗してもログアウトの流れを止めないよう、例外は投げない
+export async function dismissPushNotifications() {
+  // Web版はプッシュ通知を受け取らない
+  if (Platform.OS === 'web') return;
+
+  try {
+    await Notifications.dismissAllNotificationsAsync();
+  } catch (e) {
+    logger.warn('通知欄の通知を消す処理で例外:', e instanceof Error ? e.message : e);
+  }
 }
 
 export function getCurrentPlatform(): 'ios' | 'android' | 'web' {

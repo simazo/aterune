@@ -1,6 +1,7 @@
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { useAuth } from '@/hooks/use-auth';
 import { DARK_NAVIGATION_THEME, LIGHT_NAVIGATION_THEME } from '@/lib/navigation-theme';
+import { setForegroundNotificationHandler } from '@/lib/push-notifications';
 import { AuthProvider } from '@/providers/auth-provider';
 import { Slot, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -10,6 +11,7 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import "../../global.css";
 
 SplashScreen.preventAutoHideAsync();
+setForegroundNotificationHandler();
 
 function RootLayoutContent() {
   const colorScheme = useColorScheme();

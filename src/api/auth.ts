@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import { dismissPushNotifications } from '@/lib/push-notifications';
 import { supabase } from '@/lib/supabase';
 import { Platform } from 'react-native';
 import { deletePushTokenForCurrentDevice } from './push-tokens';
@@ -81,5 +82,7 @@ export async function signOut() {
     // 今後その作りが変わってもログアウトを止めないよう、念のため残している
     logger.warn('push token削除中に例外:', e instanceof Error ? e.message : e);
   }
+  // 通知欄の通知は OS が出しているため、ログアウトしても自分で消さないと残る
+  await dismissPushNotifications();
   return supabase.auth.signOut();
 }
