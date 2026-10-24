@@ -29,10 +29,12 @@ export function AuthConfirmed() {
 
     (async () => {
       const confirmation = await createSessionFromUrl(url);
-      if (confirmation.status === 'success') {
-        await savePushTokenForCurrentUser();
-      }
       setConfirmation(confirmation);
+      // 通知の許可ダイアログを待たずに完了画面を出す。保存は後ろで行う
+      // （savePushTokenForCurrentUser は失敗しても例外を投げないので、待たなくてよい）
+      if (confirmation.status === 'success') {
+        void savePushTokenForCurrentUser();
+      }
     })();
   }, [url]);
 
