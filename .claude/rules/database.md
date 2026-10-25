@@ -22,7 +22,16 @@ npx supabase functions deploy send-push  # Edge Function の反映（verify_jwt 
 ```
 
 ### プッシュ送信のシークレット
-`db reset --linked` で Vault も消えるため、リセットのたびに SQL Editor で登録し直す。`send_push_secret` と Edge Function の `SEND_PUSH_SECRET` は同じ値にする（`openssl rand -hex 32` などで作る）。
+送る側（DB のトリガー）と受ける側（Edge Function の send-push）で、同じ合言葉を別々の場所に持つ。値が食い違うと send-push が 401 を返し、通知が届かない。
+
+| 置き場所 | 中身 | 使う側 | `db reset --linked` で |
+|---|---|---|---|
+| Vault（DB の中） | `project_url`（Supabase プロジェクトの URL。末尾に `/` を付けない）と `send_push_secret` | DB のトリガー | 消える |
+| Edge Function の secrets（プロジェクトの設定） | `SEND_PUSH_SECRET` | send-push | 消えない |
+
+合言葉は `openssl rand -hex 32` などで作り、パスワード管理ツールなどに保存しておく。Vault が未登録でもエラーにはならず、通知が送られないだけなので、リセット後に通知が届かないときはまずここを確かめる。
+
+**リモートの DB を作り直したとき（`db reset --linked` のあと）**：SQL Editor で Vault に2件を登録する。`SEND_PUSH_SECRET` は消えていないので、前と同じ値を使うなら `secrets set` は不要。`push_tokens` も消えるため、端末ではログインし直して token を保存し直す。
 
 ```sql
 select vault.create_secret('https://kwjgxjtsyjzajdcaqnpd.supabase.co', 'project_url');
@@ -30,7 +39,20 @@ select vault.create_secret('<ランダムな値>', 'send_push_secret');
 ```
 
 ```bash
-npx supabase secrets set SEND_PUSH_SECRET=<上と同じ値>  # Edge Function の secrets（リセットでは消えない）
+npx supabase secrets set SEND_PUSH_SECRET=<上と同じ値>  # 初回と、値を変えたときだけ
+```
+
+**作り直さずに合言葉だけ変えるとき（運用中）**：Vault を更新し、続けて同じ新しい値で `secrets set` を実行する。2つの間に送られた通知は 401 になって届かないため、続けて実行する。
+
+```sql
+select vault.update_secret(
+  (select id from vault.secrets where name = 'send_push_secret'),
+  '<新しい値>'
+);
+```
+
+```bash
+npx supabase secrets set SEND_PUSH_SECRET=<上と同じ新しい値>
 ```
 
 ローカルで試すときは、`supabase/functions/.env`（gitignore 済み）に `SEND_PUSH_SECRET` を書いて `npx supabase functions serve send-push --env-file supabase/functions/.env` で起動し、Vault の `project_url` は DB のコンテナから届く `http://supabase_kong_aterune:8000` にする。
