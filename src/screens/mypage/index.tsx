@@ -80,9 +80,10 @@ export function MyPage() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-background" contentContainerClassName="p-4">
+    // 退会のリンクを画面の下端に置くため、中身を画面の高さいっぱいまで伸ばす
+    <ScrollView className="flex-1 bg-background" contentContainerClassName="flex-grow p-4">
       {/* 広い画面（Web）で横に間延びしないよう、幅を抑えて中央に置く */}
-      <VStack className="w-full max-w-2xl self-center" space="lg">
+      <VStack className="w-full max-w-2xl flex-1 self-center" space="lg">
         {profile ? (
           <Card>
             <VStack space="md">
@@ -151,8 +152,8 @@ export function MyPage() {
           </Button>
         </VStack>
 
-        {/* 押し間違えないよう、ボタンではなく目立たないリンクにする */}
-        <Link className="self-center" onPress={() => router.push('/account/delete')}>
+        {/* 押し間違えないよう、ボタンではなく目立たないリンクにし、ログアウトから離して下端に置く */}
+        <Link className="mt-auto self-center pt-12" onPress={() => router.push('/account/delete')}>
           <LinkText size="sm" className="text-muted-foreground">
             退会する
           </LinkText>
