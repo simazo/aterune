@@ -14,6 +14,7 @@
 -- 結果の tags は、絞り込みに使ったタグだけでなく、その占い師の全タグ。
 -- 中身と並びは list_teller_tags_json が決める(get_teller と共通)。
 -- ログイン中のユーザー自身は結果に含めない(未ログインなら auth.uid() が null なので誰も除外しない)。
+-- 退会したユーザー(profiles.deleted_at あり)も含めない。
 -- 呼び出し元の権限で動けばよい(参照先はすべて誰でも読める)ので security definer は付けない。
 
 -- 並び順の候補。enum にして、想定外の値は呼び出し時に DB が弾く(型生成で TS 側にもユニオン型が入る)
@@ -57,6 +58,7 @@ as $$
   from public.teller_profiles tp
   join public.profiles p on p.id = tp.profile_id
   where tp.profile_id is distinct from (select auth.uid())
+    and p.deleted_at is null
     and (not p_accepting_only or tp.is_accepting)
     -- 指定タグの種類のうち、この占い師が満たしていない種類が 1 つも無いこと
     and not exists (
@@ -87,7 +89,7 @@ as $$
 $$;
 
 comment on function public.search_tellers(text[], boolean, public.teller_sort_order) is
-  '占い師検索。p_tag_slugs のタグで絞り込む(同じ種類の中は OR、種類どうしは AND)。p_accepting_only が true なら受付中のみ。p_sort の順に並べる。ログイン中のユーザー自身は除く';
+  '占い師検索。p_tag_slugs のタグで絞り込む(同じ種類の中は OR、種類どうしは AND)。p_accepting_only が true なら受付中のみ。p_sort の順に並べる。ログイン中のユーザー自身と退会したユーザーは除く';
 
 revoke all on function public.search_tellers(text[], boolean, public.teller_sort_order) from public, anon, authenticated;
 grant execute on function public.search_tellers(text[], boolean, public.teller_sort_order) to anon, authenticated;

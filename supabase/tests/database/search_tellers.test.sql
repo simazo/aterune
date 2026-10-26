@@ -1,5 +1,5 @@
 begin;
-select plan(25);
+select plan(26);
 
 -- ===== テストデータ(postgres 権限)=====
 -- seed に依存しないよう、タグ・占い師はすべてここで作る。結果はテストの占い師(d1〜d4)に絞って確かめる
@@ -328,6 +328,21 @@ select results_eq(
     '00000000-0000-0000-0000-0000000000d3'
   ]::uuid[],
   'rating なら、平均 5.0・1件の占い師は、平均 4.8・20件の占い師より下に来る'
+);
+reset role;
+
+-- 26. 退会したユーザーは出さない
+update public.profiles set deleted_at = now() where id = '00000000-0000-0000-0000-0000000000d1';
+
+set local role anon;
+select set_eq(
+  $$ select teller_id from public.search_tellers() where teller_id in (select id from test_tellers) $$,
+  array[
+    '00000000-0000-0000-0000-0000000000d2',
+    '00000000-0000-0000-0000-0000000000d3',
+    '00000000-0000-0000-0000-0000000000d4'
+  ]::uuid[],
+  '退会したユーザーは検索結果に出ない'
 );
 reset role;
 

@@ -45,7 +45,7 @@ comment on column public.sessions.recipient_id      is '申込まれた側のユ
 comment on column public.sessions.consultant_id     is '相談者側のユーザーID(申込みの方向に関わらず常に相談者)';
 comment on column public.sessions.teller_id         is '占い師側のユーザーID(申込みの方向に関わらず常に占い師。作成時に占い師登録があることをトリガーで確かめる。占い師をやめても履歴として残る)';
 comment on column public.sessions.initiated_by      is '申込みの起点(consultant=相談者から、teller=占い師から(お悩み投稿への応募))';
-comment on column public.sessions.status            is 'pending=承認待ち / active=進行中 / completed=相談者の完了操作 / auto_completed=相談者側の無操作による自動完了 / rejected=拒否 / expired=申込みの期限切れ';
+comment on column public.sessions.status            is 'pending=承認待ち / active=進行中 / completed=相談者の完了操作 / auto_completed=相談者側の無操作による自動完了 / rejected=拒否 / expired=申込みの期限切れ(当事者の退会による取り下げも含む)';
 comment on column public.sessions.concern_tag_id    is '悩みタグのID(お悩み投稿経由の場合は投稿からコピー。相談者からの申込みでは NULL)';
 comment on column public.sessions.concern           is '悩みの内容(お悩み投稿経由の場合は投稿からコピー。1000文字まで)';
 comment on column public.sessions.post_id           is 'お悩み投稿経由の場合の投稿ID。それ以外と投稿削除時はNULL';
@@ -115,13 +115,15 @@ end;
 $$;
 
 -- 申込みのルール:
+--   ・申込みの向きに関わらず、退会したユーザー(profiles.deleted_at あり)には申し込めない。
+--     退会したユーザーも申し込めない(auth の論理削除のあとも、発行済みのアクセストークンは期限まで使えるため)
 --   ・相談者からの申込みは、受付停止中の占い師にはできない
 --   ・相談者からの申込みは、生年月日必須の占い師には、生年月日を登録済みの相談者だけができる
 --   ・申込みの向きに関わらず、同じ相談者と占い師の間に、期限内の pending か active があれば作れない
 --     (期限切れの pending は、定期処理で expired になる前でも数えない。システムからの登録も弾く)
 -- 利用者は status を指定できないので、利用者の申込みは常に pending として確かめる。
 -- システムが終了済みの行(completed など)を直接作る場合は申込みではないので確かめない
--- 当事者は RLS で自分の生年月日と、相手とのセッションを読めるので、security definer は付けない
+-- 当事者は RLS で自分の生年月日と、相手とのセッションを読め、profiles は誰でも読めるので、security definer は付けない
 create function public.check_session_request()
 returns trigger
 language plpgsql
@@ -133,6 +135,22 @@ declare
 begin
   if not (new.status = 'active' or (new.status = 'pending' and new.expires_at > now())) then
     return new;
+  end if;
+
+  if exists (
+    select 1 from public.profiles
+     where id = new.applicant_id
+       and deleted_at is not null
+  ) then
+    raise exception 'the applicant has deleted the account';
+  end if;
+
+  if exists (
+    select 1 from public.profiles
+     where id = new.recipient_id
+       and deleted_at is not null
+  ) then
+    raise exception 'the recipient has deleted the account';
   end if;
 
   if new.initiated_by = 'consultant' then

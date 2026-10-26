@@ -11,6 +11,7 @@ create table public.profiles (
   avatar_url   text,
   bio          text,
   is_teller    boolean not null default false,
+  deleted_at   timestamptz,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now(),
 
@@ -28,6 +29,7 @@ comment on column public.profiles.display_name is '表示名(20文字まで)';
 comment on column public.profiles.avatar_url is 'アバター画像URL';
 comment on column public.profiles.bio is '自己紹介文(一般ユーザー向け。任意入力、200文字まで)';
 comment on column public.profiles.is_teller is '占い師登録の有無(teller_profilesの作成/削除時にトリガーで自動同期。手動更新しない)';
+comment on column public.profiles.deleted_at is '退会日時(退会していなければNULL。prepare_account_deletionが設定し、表示名は「退会したユーザー」に書き換わる。利用者は更新できない)';
 
 -- 2. updated_at の自動更新 ----------------------------------
 create trigger profiles_set_updated_at
@@ -48,11 +50,12 @@ create policy profiles_insert_own
   to authenticated
   with check ((select auth.uid()) = id);
 
+-- 退会したユーザーは更新できない(auth の論理削除のあとも、発行済みのアクセストークンは期限まで使えるため)
 create policy profiles_update_own
   on public.profiles for update
   to authenticated
-  using ((select auth.uid()) = id)
-  with check ((select auth.uid()) = id);
+  using ((select auth.uid()) = id and deleted_at is null)
+  with check ((select auth.uid()) = id and deleted_at is null);
 
 -- 5. GRANT ---------------------------------------------------
 revoke all on public.profiles from anon, authenticated;

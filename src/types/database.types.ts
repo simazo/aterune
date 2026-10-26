@@ -202,6 +202,7 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           created_at: string
+          deleted_at: string | null
           display_name: string
           id: string
           is_teller: boolean
@@ -211,6 +212,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_name: string
           id: string
           is_teller?: boolean
@@ -220,6 +222,7 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           created_at?: string
+          deleted_at?: string | null
           display_name?: string
           id?: string
           is_teller?: boolean
@@ -548,6 +551,10 @@ export type Database = {
         }[]
       }
       list_teller_tags_json: { Args: { p_teller_id: string }; Returns: Json }
+      prepare_account_deletion: {
+        Args: { p_user_id: string }
+        Returns: undefined
+      }
       register_push_token: {
         Args: { p_platform: string; p_token: string }
         Returns: undefined

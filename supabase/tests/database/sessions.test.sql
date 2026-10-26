@@ -1,5 +1,5 @@
 begin;
-select plan(75);
+select plan(77);
 
 -- ===== テストデータ(postgres 権限) =====
 -- alice=占い師でもある相談者 / bob=占い師 / carol=占い師ではない一般ユーザー / dave=占い師(完了数・制約用)
@@ -790,6 +790,36 @@ select is(
   (select session_count from public.teller_profiles where profile_id = '00000000-0000-0000-0000-0000000000f4'),
   2, '完了したセッションが削除されると session_count が減る'
 );
+
+-- 76. 退会したユーザーには申し込めない(hank=退会した占い師)
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-0000000000fa', 'hank@example.com');
+insert into public.teller_profiles (profile_id) values
+  ('00000000-0000-0000-0000-0000000000fa');
+update public.profiles set deleted_at = now() where id = '00000000-0000-0000-0000-0000000000fa';
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000f3","role":"authenticated"}', true);
+select throws_ok(
+  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern)
+     values ('00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000fa',
+             '00000000-0000-0000-0000-0000000000f3', '00000000-0000-0000-0000-0000000000fa', 'consultant', 'hank への申込み') $$,
+  'P0001', 'the recipient has deleted the account',
+  '退会したユーザーには申し込めない'
+);
+
+-- 77. 退会したユーザーは、ログイン状態が残っていても申し込めない
+--     (auth の論理削除のあとも、発行済みのアクセストークンは期限まで使えるため)
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000fa","role":"authenticated"}', true);
+select throws_ok(
+  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern)
+     values ('00000000-0000-0000-0000-0000000000fa', '00000000-0000-0000-0000-0000000000f4',
+             '00000000-0000-0000-0000-0000000000fa', '00000000-0000-0000-0000-0000000000f4', 'consultant', 'hank からの申込み') $$,
+  'P0001', 'the applicant has deleted the account',
+  '退会したユーザーは申し込めない'
+);
+reset role;
+select set_config('request.jwt.claims', '', true);
 
 select * from finish();
 rollback;

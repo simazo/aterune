@@ -1,5 +1,5 @@
 begin;
-select plan(9);
+select plan(10);
 
 -- ===== テストデータ(postgres 権限)=====
 -- seed に依存しないよう、タグ・占い師はすべてここで作る
@@ -108,6 +108,16 @@ select is(
   'ログイン中の占い師が自分の ID を指定すると、自分を返す'
 );
 
+reset role;
+
+-- 10. 退会したユーザーは返さない
+update public.profiles set deleted_at = now() where id = '00000000-0000-0000-0000-0000000000e1';
+
+set local role anon;
+select is_empty(
+  $$ select * from public.get_teller('00000000-0000-0000-0000-0000000000e1') $$,
+  '退会したユーザーの ID なら 0 行'
+);
 reset role;
 
 select * from finish();

@@ -1,5 +1,5 @@
 begin;
-select plan(17);
+select plan(18);
 
 -- ===== テストデータ(postgres 権限) =====
 -- alice=投稿者(占い師でもある)/ bob,dave,erin=占い師 / carol=占い師ではない
@@ -210,6 +210,24 @@ select is(
   'in_progress',
   '1件を完了しても、ほかに進行中があれば投稿は対応中のまま'
 );
+
+-- 18. 退会したユーザーの投稿には応募できない。
+--     退会の処理(prepare_account_deletion)で投稿は閉じるが、閉じていなくても応募は弾く(frank=退会した投稿者)
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-0000000000c6', 'frank@example.com');
+insert into public.consultation_posts (id, consultant_id, concern_tag_id, concern, status) values
+  ('00000000-0000-0000-0000-0000000000d5', '00000000-0000-0000-0000-0000000000c6', '00000000-0000-0000-0000-0000000000e1', 'p5の悩み', 'open');
+update public.profiles set deleted_at = now() where id = '00000000-0000-0000-0000-0000000000c6';
+
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c2","role":"authenticated"}', true);
+select throws_ok(
+  $$ select public.apply_to_consultation_post('00000000-0000-0000-0000-0000000000d5') $$,
+  'P0001', 'the recipient has deleted the account',
+  '退会したユーザーの投稿には応募できない'
+);
+reset role;
 
 select * from finish();
 rollback;
