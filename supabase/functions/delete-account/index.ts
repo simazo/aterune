@@ -12,8 +12,10 @@ import { corsHeaders } from "@supabase/supabase-js/cors";
 // アプリはこの値を見て、進行中のセッションがあることを伝える
 type DeleteAccountError = "unauthorized" | "has_active_session" | "failed";
 
-function json(status: number, body: { error: DeleteAccountError } | null) {
-  return new Response(body ? JSON.stringify(body) : null, {
+// 成功時も本文を返す。functions.invoke は Content-Type が application/json だと本文を JSON として読むため、
+// 空の本文ではアプリ側でエラーになる
+function json(status: number, body: { error: DeleteAccountError | null }) {
+  return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
@@ -78,5 +80,5 @@ Deno.serve(async (req) => {
     return fail(deleteError.message);
   }
 
-  return json(200, null);
+  return json(200, { error: null });
 });
