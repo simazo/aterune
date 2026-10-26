@@ -9,7 +9,7 @@ type UpdateMyProfileParams = {
 export async function getMyProfile(userId: string) {
   return supabase
     .from('profiles')
-    .select('display_name, bio, avatar_url, is_teller')
+    .select('display_name, bio, avatar_path, is_teller')
     .eq('id', userId)
     .single();
 }

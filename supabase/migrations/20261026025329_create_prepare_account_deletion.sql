@@ -44,7 +44,7 @@ begin
   update public.profiles
      set display_name = '退会したユーザー',
          bio          = null,
-         avatar_url   = null,
+         avatar_path  = null,
          deleted_at   = coalesce(deleted_at, now())
    where id = p_user_id;
 

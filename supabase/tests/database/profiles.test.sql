@@ -1,5 +1,5 @@
 begin;
-select plan(16);
+select plan(22);
 
 -- ---------- 準備 ----------
 -- profiles は handle_new_user のトリガーで自動作成される
@@ -119,7 +119,52 @@ select lives_ok(
   'bio は未入力(NULL)に戻せる'
 );
 
--- ---------- 15. 利用者は deleted_at を更新できない(列 GRANT) ----------
+-- ---------- 15-20. アイコンのパスの制約 ----------
+select lives_ok(
+  $$ update public.profiles set avatar_path = '00000000-0000-0000-0000-0000000000a1/1730000000000.jpg'
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  'avatar_path に自分のフォルダのパスを設定できる'
+);
+
+select throws_ok(
+  $$ update public.profiles set avatar_path = '00000000-0000-0000-0000-0000000000a2/1730000000000.jpg'
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  '23514',
+  null,
+  'avatar_path に他人のフォルダのパスは設定できない'
+);
+
+select throws_ok(
+  $$ update public.profiles set avatar_path = 'https://example.com/avatar.jpg'
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  '23514',
+  null,
+  'avatar_path に URL は設定できない'
+);
+
+select throws_ok(
+  $$ update public.profiles set avatar_path = '00000000-0000-0000-0000-0000000000a1/../00000000-0000-0000-0000-0000000000a2/1730000000000.jpg'
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  '23514',
+  null,
+  'avatar_path に .. を含むパスは設定できない'
+);
+
+select throws_ok(
+  $$ update public.profiles set avatar_path = '00000000-0000-0000-0000-0000000000a1/1730000000000.png'
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  '23514',
+  null,
+  'avatar_path に .jpg 以外のファイルは設定できない'
+);
+
+select lives_ok(
+  $$ update public.profiles set avatar_path = null
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  'avatar_path は未設定(NULL)に戻せる'
+);
+
+-- ---------- 21. 利用者は deleted_at を更新できない(列 GRANT) ----------
 select throws_ok(
   $$ update public.profiles set deleted_at = now()
        where id = '00000000-0000-0000-0000-0000000000a1' $$,
@@ -128,7 +173,7 @@ select throws_ok(
   '利用者は deleted_at を更新できない'
 );
 
--- ---------- 16. 退会したユーザーは、ログイン状態が残っていても自分のプロフィールを更新できない ----------
+-- ---------- 22. 退会したユーザーは、ログイン状態が残っていても自分のプロフィールを更新できない ----------
 -- (auth の論理削除のあとも、発行済みのアクセストークンは期限まで使えるため)
 reset role;
 update public.profiles

@@ -12,7 +12,7 @@ insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000b5', 'erin@example.com');
 
 update public.profiles
-   set display_name = 'アリス', bio = 'よろしくお願いします', avatar_url = 'https://example.com/alice.jpg'
+   set display_name = 'アリス', bio = 'よろしくお願いします', avatar_path = '00000000-0000-0000-0000-0000000000b1/1730000000000.jpg'
  where id = '00000000-0000-0000-0000-0000000000b1';
 
 insert into public.teller_profiles (profile_id) values
@@ -128,7 +128,7 @@ select results_eq(
 
 -- 9. プロフィールは表示名を「退会したユーザー」にし、自己紹介・アイコンを空にする
 select results_eq(
-  $$ select display_name, bio, avatar_url, deleted_at is not null
+  $$ select display_name, bio, avatar_path, deleted_at is not null
        from public.profiles where id = '00000000-0000-0000-0000-0000000000b1' $$,
   $$ values ('退会したユーザー'::text, null::text, null::text, true) $$,
   'プロフィールの表示名が「退会したユーザー」になり、自己紹介・アイコンが空になり、deleted_at が入る'
@@ -168,7 +168,7 @@ select lives_ok(
 
 -- 14. 2回目でも結果は変わらない
 select results_eq(
-  $$ select display_name, bio, avatar_url, deleted_at is not null
+  $$ select display_name, bio, avatar_path, deleted_at is not null
        from public.profiles where id = '00000000-0000-0000-0000-0000000000b1' $$,
   $$ values ('退会したユーザー'::text, null::text, null::text, true) $$,
   '2回呼んでも、プロフィールは退会済みのまま'

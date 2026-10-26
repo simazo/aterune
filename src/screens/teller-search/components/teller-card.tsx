@@ -1,3 +1,4 @@
+import { getAvatarUrl } from '@/api/avatars';
 import { Avatar, AvatarFallbackText, AvatarImage } from '@/components/ui/avatar';
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
@@ -45,7 +46,7 @@ export function TellerCard({ teller }: Props) {
         <VStack className="px-4 pb-4" space="sm">
           <Avatar size="lg" className="-mt-8 border-4 border-card">
             <AvatarFallbackText>{teller.display_name}</AvatarFallbackText>
-            {teller.avatar_url && <AvatarImage source={{ uri: teller.avatar_url }} />}
+            {teller.avatar_path && <AvatarImage source={{ uri: getAvatarUrl(teller.avatar_path) }} />}
           </Avatar>
 
           <VStack>

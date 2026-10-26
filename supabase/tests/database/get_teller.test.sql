@@ -21,6 +21,11 @@ update public.teller_profiles
        created_at     = '2026-10-01 12:00:00+09'
  where profile_id = '00000000-0000-0000-0000-0000000000e1';
 
+-- アイコンは e1 だけに入れる(列の確認用)
+update public.profiles
+   set avatar_path = '00000000-0000-0000-0000-0000000000e1/1730000000000.jpg'
+ where id = '00000000-0000-0000-0000-0000000000e1';
+
 -- 占術2 の表示順を占術1 より前にして、tags の並び順を確かめられるようにする
 insert into public.tags (id, category, slug, name, sort_order) values
   ('00000000-0000-0000-0000-000000000e01', 'divination', 'test-div-1',     'テスト占術1',     2),
@@ -49,12 +54,13 @@ set local role anon;
 
 -- 3. 詳細画面用の列
 select results_eq(
-  $$ select teller_id, display_name, self_pr, training_period, is_accepting, requires_birthdate,
+  $$ select teller_id, display_name, avatar_path, self_pr, training_period, is_accepting, requires_birthdate,
             average_rating, review_count, session_count, created_at
        from public.get_teller('00000000-0000-0000-0000-0000000000e1') $$,
-  $$ values ('00000000-0000-0000-0000-0000000000e1'::uuid, 'テスト占い師1'::text, 'e1 の自己PR'::text,
+  $$ values ('00000000-0000-0000-0000-0000000000e1'::uuid, 'テスト占い師1'::text,
+             '00000000-0000-0000-0000-0000000000e1/1730000000000.jpg'::text, 'e1 の自己PR'::text,
              '半年'::text, true, false, 4.50::numeric, 2, 3, '2026-10-01 12:00:00+09'::timestamptz) $$,
-  '指定した占い師の表示名・自己PR・修行期間・受付状態・生年月日の要否・評価・件数・セッション数・登録日時を返す'
+  '指定した占い師の表示名・アイコンのパス・自己PR・修行期間・受付状態・生年月日の要否・評価・件数・セッション数・登録日時を返す'
 );
 
 -- 4. tags は種類 → 表示順の順

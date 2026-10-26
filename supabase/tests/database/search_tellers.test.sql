@@ -41,6 +41,11 @@ update public.teller_profiles as tp
   ) as v (profile_id, average_rating, review_count, session_count, days_ago)
  where tp.profile_id = v.profile_id;
 
+-- アイコンは d1 だけに入れる(列の確認用)
+update public.profiles
+   set avatar_path = '00000000-0000-0000-0000-0000000000d1/1730000000000.jpg'
+ where id = '00000000-0000-0000-0000-0000000000d1';
+
 -- 占術2 の表示順を占術1 より前にして、tags の並び順を確かめられるようにする
 insert into public.tags (id, category, slug, name, sort_order) values
   ('00000000-0000-0000-0000-000000000d01', 'divination', 'test-div-1',     'テスト占術1',     2),
@@ -177,11 +182,12 @@ select is(
 
 -- 13. カード表示用の列
 select results_eq(
-  $$ select display_name, self_pr, training_period, is_accepting, average_rating, review_count, session_count
+  $$ select display_name, avatar_path, self_pr, training_period, is_accepting, average_rating, review_count, session_count
        from public.search_tellers()
       where teller_id = '00000000-0000-0000-0000-0000000000d1' $$,
-  $$ values ('テスト占い師1'::text, 'd1 の自己PR'::text, '半年'::text, true, 4.50::numeric, 2, 3) $$,
-  '表示名・自己PR・修行期間・受付状態・評価・レビュー数・完了セッション数を返す'
+  $$ values ('テスト占い師1'::text, '00000000-0000-0000-0000-0000000000d1/1730000000000.jpg'::text,
+             'd1 の自己PR'::text, '半年'::text, true, 4.50::numeric, 2, 3) $$,
+  '表示名・アイコンのパス・自己PR・修行期間・受付状態・評価・レビュー数・完了セッション数を返す'
 );
 
 -- 14. 受付停止中の占い師の is_accepting は false
