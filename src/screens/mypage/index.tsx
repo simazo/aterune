@@ -1,4 +1,5 @@
 import { signOut } from '@/api/auth';
+import { getAvatarUrl } from '@/api/avatars';
 import { getMyProfile } from '@/api/profiles';
 import { Avatar, AvatarFallbackText, AvatarImage } from '@/components/ui/avatar';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
@@ -88,7 +89,7 @@ export function MyPage() {
               <HStack className="items-center" space="md">
                 <Avatar size="lg">
                   <AvatarFallbackText>{profile.display_name}</AvatarFallbackText>
-                  {profile.avatar_path && <AvatarImage source={{ uri: profile.avatar_path }} />}
+                  {profile.avatar_path && <AvatarImage source={{ uri: getAvatarUrl(profile.avatar_path) }} />}
                 </Avatar>
                 <Heading size="xl" className="flex-1">
                   {profile.display_name}
