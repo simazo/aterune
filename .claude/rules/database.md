@@ -19,6 +19,7 @@ npx supabase db reset --linked # リモートを全消去して全マイグレ�
 # リモートで pgTAP テスト（--linked は不可。パスワードはダッシュボードの Database 設定を参照）
 npx supabase test db --db-url "postgresql://postgres.kwjgxjtsyjzajdcaqnpd:<DBパスワード>@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres"
 npx supabase functions deploy send-push  # Edge Function の反映（verify_jwt は config.toml の設定が使われる）
+npx supabase functions deploy delete-account
 ```
 
 ### プッシュ送信のシークレット
