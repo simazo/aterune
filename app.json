@@ -35,7 +35,15 @@
           "imageWidth": 76
         }
       ],
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "プロフィールのアイコンに使う写真を選ぶために、写真へのアクセスを許可してください",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -9,11 +9,13 @@ import { useErrorToast } from '@/hooks/use-error-toast';
 import type { Gender } from '@/types';
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
+import { AvatarEditor } from './components/avatar-editor';
 import { ProfileEditForm } from './components/profile-edit-form';
 
 type LoadedProfile = {
   displayName: string;
   bio: string | null;
+  avatarPath: string | null;
   birthdate: string | null;
   gender: Gender | null;
 };
@@ -44,6 +46,7 @@ export function ProfileEdit() {
         setProfile({
           displayName: profileResult.data.display_name,
           bio: profileResult.data.bio,
+          avatarPath: profileResult.data.avatar_path,
           birthdate: detailsResult.data?.birthdate ?? null,
           gender: detailsResult.data?.gender ?? null,
         });
@@ -92,7 +95,12 @@ export function ProfileEdit() {
       {header}
       <KeyboardAwareScrollView className="flex-1" contentContainerClassName="p-4">
         {/* 広い画面（Web）で横に間延びしないよう、幅を抑えて中央に置く */}
-        <VStack className="w-full max-w-2xl self-center">
+        <VStack className="w-full max-w-2xl gap-6 self-center">
+          <AvatarEditor
+            userId={userId}
+            displayName={profile.displayName}
+            avatarPath={profile.avatarPath}
+          />
           <ProfileEditForm
             userId={userId}
             displayName={profile.displayName}
