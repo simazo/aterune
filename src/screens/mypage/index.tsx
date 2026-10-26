@@ -5,6 +5,7 @@ import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Heading } from '@/components/ui/heading';
 import { HStack } from '@/components/ui/hstack';
+import { Link, LinkText } from '@/components/ui/link';
 import { ScrollView } from '@/components/ui/scroll-view';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
@@ -149,6 +150,13 @@ export function MyPage() {
             {isSigningOut ? <ButtonSpinner /> : <ButtonText>ログアウト</ButtonText>}
           </Button>
         </VStack>
+
+        {/* 押し間違えないよう、ボタンではなく目立たないリンクにする */}
+        <Link className="self-center" onPress={() => router.push('/account/delete')}>
+          <LinkText size="sm" className="text-muted-foreground">
+            退会する
+          </LinkText>
+        </Link>
       </VStack>
     </ScrollView>
   );
