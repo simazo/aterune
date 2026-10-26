@@ -27,12 +27,12 @@ npx supabase functions deploy delete-account
 
 | 置き場所 | 中身 | 使う側 | `db reset --linked` で |
 |---|---|---|---|
-| Vault（DB の中） | `project_url`（Supabase プロジェクトの URL。末尾に `/` を付けない）と `send_push_secret` | DB のトリガー | 消える |
+| Vault（DB の中） | `project_url`（Supabase プロジェクトの URL。末尾に `/` を付けない）と `send_push_secret` | DB のトリガー | 消えない |
 | Edge Function の secrets（プロジェクトの設定） | `SEND_PUSH_SECRET` | send-push | 消えない |
 
-合言葉は `openssl rand -hex 32` などで作り、パスワード管理ツールなどに保存しておく。Vault が未登録でもエラーにはならず、通知が送られないだけなので、リセット後に通知が届かないときはまずここを確かめる。
+合言葉は `openssl rand -hex 32` などで作り、パスワード管理ツールなどに保存しておく。Vault が未登録でもエラーにはならず、通知が送られないだけなので、通知が届かないときはまずここを確かめる。
 
-**リモートの DB を作り直したとき（`db reset --linked` のあと）**：SQL Editor で Vault に2件を登録する。`SEND_PUSH_SECRET` は消えていないので、前と同じ値を使うなら `secrets set` は不要。`push_tokens` も消えるため、端末ではログインし直して token を保存し直す。
+**初めて設定するとき（新しいプロジェクト）**：SQL Editor で Vault に2件を登録し、同じ合言葉で `secrets set` を実行する。
 
 ```sql
 select vault.create_secret('https://kwjgxjtsyjzajdcaqnpd.supabase.co', 'project_url');
@@ -40,7 +40,13 @@ select vault.create_secret('<ランダムな値>', 'send_push_secret');
 ```
 
 ```bash
-npx supabase secrets set SEND_PUSH_SECRET=<上と同じ値>  # 初回と、値を変えたときだけ
+npx supabase secrets set SEND_PUSH_SECRET=<上と同じ値>
+```
+
+**リモートの DB を作り直したとき（`db reset --linked` のあと）**：Vault はリセットの対象外で消えないため、登録し直さない（`create_secret` は同じ名前があると重複エラーになる）。登録済みかどうかは、値を出さずに次の SQL で確かめる。`push_tokens` は消えるため、端末ではログインし直して token を保存し直す。
+
+```sql
+select name, created_at, updated_at from vault.secrets order by name;
 ```
 
 **作り直さずに合言葉だけ変えるとき（運用中）**：Vault を更新し、続けて同じ新しい値で `secrets set` を実行する。2つの間に送られた通知は 401 になって届かないため、続けて実行する。
