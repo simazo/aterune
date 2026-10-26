@@ -33,9 +33,9 @@ export type TellerTag = {
 type SearchTellersRow = Database['public']['Functions']['search_tellers']['Returns'][number];
 export type TellerSearchResult = Omit<
   SearchTellersRow,
-  'avatar_url' | 'self_pr' | 'training_period' | 'average_rating' | 'tags'
+  'avatar_path' | 'self_pr' | 'training_period' | 'average_rating' | 'tags'
 > & {
-  avatar_url: string | null;
+  avatar_path: string | null;
   self_pr: string | null;
   training_period: string | null;
   average_rating: number | null;
@@ -94,9 +94,9 @@ export type MyConsultationPost =
 type GetTellerRow = Database['public']['Functions']['get_teller']['Returns'][number];
 export type TellerDetail = Omit<
   GetTellerRow,
-  'avatar_url' | 'self_pr' | 'training_period' | 'average_rating' | 'tags'
+  'avatar_path' | 'self_pr' | 'training_period' | 'average_rating' | 'tags'
 > & {
-  avatar_url: string | null;
+  avatar_path: string | null;
   self_pr: string | null;
   training_period: string | null;
   average_rating: number | null;

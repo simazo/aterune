@@ -16,7 +16,7 @@ import type { Profile } from '@/types';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 
-type MyProfile = Pick<Profile, 'display_name' | 'bio' | 'avatar_url' | 'is_teller'>;
+type MyProfile = Pick<Profile, 'display_name' | 'bio' | 'avatar_path' | 'is_teller'>;
 
 export function MyPage() {
   const router = useRouter();
@@ -88,7 +88,7 @@ export function MyPage() {
               <HStack className="items-center" space="md">
                 <Avatar size="lg">
                   <AvatarFallbackText>{profile.display_name}</AvatarFallbackText>
-                  {profile.avatar_url && <AvatarImage source={{ uri: profile.avatar_url }} />}
+                  {profile.avatar_path && <AvatarImage source={{ uri: profile.avatar_path }} />}
                 </Avatar>
                 <Heading size="xl" className="flex-1">
                   {profile.display_name}

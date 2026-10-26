@@ -199,7 +199,7 @@ export type Database = {
       }
       profiles: {
         Row: {
-          avatar_url: string | null
+          avatar_path: string | null
           bio: string | null
           created_at: string
           display_name: string
@@ -208,7 +208,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          avatar_url?: string | null
+          avatar_path?: string | null
           bio?: string | null
           created_at?: string
           display_name: string
@@ -217,7 +217,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          avatar_url?: string | null
+          avatar_path?: string | null
           bio?: string | null
           created_at?: string
           display_name?: string
@@ -500,7 +500,7 @@ export type Database = {
       get_teller: {
         Args: { p_teller_id: string }
         Returns: {
-          avatar_url: string
+          avatar_path: string
           average_rating: number
           created_at: string
           display_name: string
@@ -569,7 +569,7 @@ export type Database = {
           p_tag_slugs?: string[]
         }
         Returns: {
-          avatar_url: string
+          avatar_path: string
           average_rating: number
           display_name: string
           is_accepting: boolean

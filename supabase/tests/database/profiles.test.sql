@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(20);
 
 -- ---------- 準備 ----------
 -- profiles は handle_new_user のトリガーで自動作成される
@@ -117,6 +117,51 @@ select lives_ok(
   $$ update public.profiles set bio = null
        where id = '00000000-0000-0000-0000-0000000000a1' $$,
   'bio は未入力(NULL)に戻せる'
+);
+
+-- ---------- 15-20. アイコンのパスの制約 ----------
+select lives_ok(
+  $$ update public.profiles set avatar_path = '00000000-0000-0000-0000-0000000000a1/1730000000000.jpg'
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  'avatar_path に自分のフォルダのパスを設定できる'
+);
+
+select throws_ok(
+  $$ update public.profiles set avatar_path = '00000000-0000-0000-0000-0000000000a2/1730000000000.jpg'
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  '23514',
+  null,
+  'avatar_path に他人のフォルダのパスは設定できない'
+);
+
+select throws_ok(
+  $$ update public.profiles set avatar_path = 'https://example.com/avatar.jpg'
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  '23514',
+  null,
+  'avatar_path に URL は設定できない'
+);
+
+select throws_ok(
+  $$ update public.profiles set avatar_path = '00000000-0000-0000-0000-0000000000a1/../00000000-0000-0000-0000-0000000000a2/1730000000000.jpg'
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  '23514',
+  null,
+  'avatar_path に .. を含むパスは設定できない'
+);
+
+select throws_ok(
+  $$ update public.profiles set avatar_path = '00000000-0000-0000-0000-0000000000a1/1730000000000.png'
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  '23514',
+  null,
+  'avatar_path に .jpg 以外のファイルは設定できない'
+);
+
+select lives_ok(
+  $$ update public.profiles set avatar_path = null
+       where id = '00000000-0000-0000-0000-0000000000a1' $$,
+  'avatar_path は未設定(NULL)に戻せる'
 );
 
 select * from finish();

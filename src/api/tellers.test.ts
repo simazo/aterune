@@ -10,7 +10,7 @@ const mockSupabase = jest.mocked(supabase);
 const TELLER = {
   teller_id: 'teller-1',
   display_name: '占い師1',
-  avatar_url: null,
+  avatar_path: null,
   self_pr: '自己PR',
   training_period: '半年',
   is_accepting: true,

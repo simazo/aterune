@@ -11,7 +11,7 @@ create function public.get_teller(p_teller_id uuid)
 returns table (
   teller_id          uuid,
   display_name       text,
-  avatar_url         text,
+  avatar_path        text,
   self_pr            text,
   training_period    text,
   is_accepting       boolean,
@@ -29,7 +29,7 @@ as $$
   select
     tp.profile_id,
     p.display_name,
-    p.avatar_url,
+    p.avatar_path,
     tp.self_pr,
     tp.training_period,
     tp.is_accepting,

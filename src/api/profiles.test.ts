@@ -37,13 +37,13 @@ beforeEach(() => {
 
 describe('getMyProfile', () => {
   it('自分のIDでプロフィールを1件取得する', async () => {
-    const profile = { display_name: '相談者', bio: null, avatar_url: null, is_teller: false };
+    const profile = { display_name: '相談者', bio: null, avatar_path: null, is_teller: false };
     const query = mockSelectQuery({ data: profile, error: null });
 
     const result = await getMyProfile('user-1');
 
     expect(mockSupabase.from).toHaveBeenCalledWith('profiles');
-    expect(query.select).toHaveBeenCalledWith('display_name, bio, avatar_url, is_teller');
+    expect(query.select).toHaveBeenCalledWith('display_name, bio, avatar_path, is_teller');
     expect(query.eq).toHaveBeenCalledWith('id', 'user-1');
     expect(result).toEqual({ data: profile, error: null });
   });

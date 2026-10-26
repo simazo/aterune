@@ -8,7 +8,7 @@ create table public.profiles (
   id           uuid primary key
                references auth.users (id) on delete cascade,
   display_name text not null,
-  avatar_url   text,
+  avatar_path  text,
   bio          text,
   is_teller    boolean not null default false,
   created_at   timestamptz not null default now(),
@@ -19,13 +19,17 @@ create table public.profiles (
     check (btrim(display_name, ' 　') <> '' and char_length(display_name) <= 20),
   -- 自己紹介は任意入力、200 文字まで
   constraint profiles_bio_check
-    check (bio is null or char_length(bio) <= 200)
+    check (bio is null or char_length(bio) <= 200),
+  -- アイコンは Storage の avatars バケットの中の、自分のフォルダの JPEG だけ(<自分の id>/<ファイル名>.jpg)。
+  -- 任意の外部 URL を入れて、見た人の端末に読みに行かせることができないよう、URL ではなくパスで持つ
+  constraint profiles_avatar_path_check
+    check (avatar_path is null or avatar_path ~ ('^' || id::text || '/[A-Za-z0-9_-]+\.jpg$'))
 );
 
 comment on table  public.profiles is 'ユーザーの公開プロフィール';
 comment on column public.profiles.id is 'ユーザーID(auth.usersと1:1)';
 comment on column public.profiles.display_name is '表示名(20文字まで)';
-comment on column public.profiles.avatar_url is 'アバター画像URL';
+comment on column public.profiles.avatar_path is 'アイコン画像の Storage 上のパス(avatars バケット内の <id>/<ファイル名>.jpg。未設定なら null)';
 comment on column public.profiles.bio is '自己紹介文(一般ユーザー向け。任意入力、200文字まで)';
 comment on column public.profiles.is_teller is '占い師登録の有無(teller_profilesの作成/削除時にトリガーで自動同期。手動更新しない)';
 
@@ -61,9 +65,9 @@ grant select on public.profiles to anon;
 grant select on public.profiles to authenticated;
 
 -- is_teller は自分で書き換えさせないよう、列を限定して許可する
-grant insert (id, display_name, avatar_url, bio)
+grant insert (id, display_name, avatar_path, bio)
   on public.profiles to authenticated;
-grant update (display_name, avatar_url, bio)
+grant update (display_name, avatar_path, bio)
   on public.profiles to authenticated;
 
 grant all on public.profiles to service_role;
