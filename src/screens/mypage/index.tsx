@@ -109,6 +109,11 @@ export function MyPage() {
           </Text>
         )}
 
+        {/* 相談者を含む全員が使う機能なので、占い師向けのカードより先に置く */}
+        <Button variant="outline" className="bg-card" onPress={() => router.push('/favorites')}>
+          <ButtonText>お気に入りの占い師</ButtonText>
+        </Button>
+
         {profile && userId && (
           <Card>
             <VStack space="md">
