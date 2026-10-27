@@ -2,18 +2,13 @@ import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import type { Message } from '@/types';
+import { formatDateTime } from '@/utils/date';
 
 type Props = {
   messages: Pick<Message, 'id' | 'sender_id' | 'content' | 'created_at'>[];
   userId: string;
   partnerName: string;
 };
-
-function formatDateTime(value: string) {
-  const date = new Date(value);
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${minutes}`;
-}
 
 // セッションのメッセージを古い順に並べる。自分のものは右、相手のものは左に出す
 export function MessageList({ messages, userId, partnerName }: Props) {

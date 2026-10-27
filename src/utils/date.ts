@@ -29,6 +29,13 @@ export function parseDateString(value: string) {
   return { year, month, day };
 }
 
+// 日時を端末の時刻で 'M/D H:mm' にする（メッセージ・通知の一覧で使う）
+export function formatDateTime(value: string) {
+  const date = new Date(value);
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${date.getMonth() + 1}/${date.getDate()} ${date.getHours()}:${minutes}`;
+}
+
 // 端末の日付で今日を 'YYYY-MM-DD' にする（同じ形の文字列どうしなら、文字列の比較で日付の前後が分かる）
 export function getTodayString() {
   const now = new Date();
