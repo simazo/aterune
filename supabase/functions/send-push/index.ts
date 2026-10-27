@@ -15,7 +15,8 @@ type NotificationType =
   | "session_auto_completed"
   | "message_received";
 
-// 通知の種類ごとの文言(name は相手の表示名)
+// 通知の種類ごとの文言(name は相手の表示名)。
+// body はアプリ内の通知一覧の文言(src/utils/notification-text.ts の NOTIFICATION_TEXTS)と揃えるので、変えるときは両方を直す
 const MESSAGES: Record<NotificationType, (name: string) => { title: string; body: string }> = {
   session_request_received: (name) => ({
     title: "新しい申込み",
