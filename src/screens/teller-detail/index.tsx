@@ -18,6 +18,7 @@ import { CATEGORY_LABELS } from '@/utils/teller';
 import { Stack, useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FavoriteButton } from './components/favorite-button';
 import { ReviewList } from './components/review-list';
 import { TellerProfileHeader } from './components/teller-profile-header';
 
@@ -97,13 +98,20 @@ export function TellerDetail({ tellerId }: Props) {
 
   // ヘッダーは (app) の Stack で非表示にしているため、この画面だけ表示する（上のセーフエリアはヘッダーが避ける）。
   // 戻るボタンは矢印だけにする（前の画面のタイトルは出さない）。
-  // 読み込み中は、別の占い師へ切り替えたときに前の人の名前が残らないようタイトルを空にする
+  // 読み込み中は、別の占い師へ切り替えたときに前の人の名前が残らないようタイトルを空にする。
+  // お気に入りのボタンは、占い師を表示できていて、自分のプロフィールでないときだけ右端に出す。
+  // 占い師が変わったら作り直し、前の占い師の保存結果が新しい占い師の表示に反映されないようにする（key）
+  const canFavorite = !isLoading && !!teller && !!userId && userId !== teller.teller_id;
   const header = (
     <Stack.Screen
       options={{
         headerShown: true,
         title: isLoading ? '' : (teller?.display_name ?? ''),
         headerBackButtonDisplayMode: 'minimal',
+        headerRight:
+          canFavorite && userId
+            ? () => <FavoriteButton key={tellerId} userId={userId} tellerId={tellerId} />
+            : undefined,
       }}
     />
   );
