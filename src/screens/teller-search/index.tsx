@@ -1,6 +1,7 @@
 import { listTags } from '@/api/tags';
 import { searchTellers } from '@/api/tellers';
 import { SelectableButton } from '@/components/selectable-button';
+import { TellerCard } from '@/components/teller-card';
 import { HStack } from '@/components/ui/hstack';
 import { ScrollView } from '@/components/ui/scroll-view';
 import { Spinner } from '@/components/ui/spinner';
@@ -12,7 +13,6 @@ import type { TagCategory, TellerSearchResult, TellerSortOrder } from '@/types';
 import { CATEGORY_LABELS } from '@/utils/teller';
 import { useEffect, useState } from 'react';
 import { TagFilterSection, type TagOption } from './components/tag-filter-section';
-import { TellerCard } from './components/teller-card';
 
 const SORT_OPTIONS: { value: TellerSortOrder; label: string }[] = [
   { value: 'newest', label: '新着順' },
