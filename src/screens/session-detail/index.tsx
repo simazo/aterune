@@ -1,4 +1,5 @@
 import { listMessages } from '@/api/messages';
+import { markSessionNotificationsRead } from '@/api/notifications';
 import { getConsultantPrivateDetails } from '@/api/profile-private-details';
 import { getSessionReview } from '@/api/reviews';
 import { approveSession, completeSession, getSession, rejectSession } from '@/api/sessions';
@@ -14,6 +15,7 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAuth } from '@/hooks/use-auth';
 import { useErrorToast } from '@/hooks/use-error-toast';
+import { logger } from '@/lib/logger';
 import type { Gender, Message, Review, SessionDetail as SessionDetailData } from '@/types';
 import { canSeeConsultantDetails, isOpenPending } from '@/utils/group-sessions';
 import { canWriteReview } from '@/utils/review';
@@ -92,6 +94,16 @@ export function SessionDetail({ sessionId }: Props) {
         showError('やり取りを読み込めませんでした');
         return;
       }
+
+      // このセッションの未読の通知を既読にする（一覧・プッシュ・やり取りタブのどこから開いても、引っ張って更新しても効く）。
+      // 失敗しても画面の表示は止めないよう、待たずにログだけ出す
+      markSessionNotificationsRead(sessionId)
+        .then(({ error: markError }) => {
+          if (markError) logger.warn('通知を既読にする処理のエラー:', markError.message);
+        })
+        .catch(() => {
+          logger.warn('通知を既読にする処理で例外');
+        });
 
       const shouldLoadDetails = data.teller_id === userId && canSeeConsultantDetails(data, now);
       const shouldLoadMessages = MESSAGE_STATUSES.includes(data.status);
