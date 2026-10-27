@@ -90,6 +90,30 @@ export type ConsultationPostListItem =
 export type MyConsultationPost =
   Database['public']['Functions']['list_my_consultation_posts']['Returns'][number];
 
+// 通知の種類（notifications.type の CHECK 制約と合わせる）
+export type NotificationType =
+  | 'session_request_received'
+  | 'session_request_approved'
+  | 'session_request_rejected'
+  | 'session_completed'
+  | 'review_request'
+  | 'session_auto_completed'
+  | 'message_received';
+
+// 通知一覧の1行（list_my_notifications の結果）。message_received は同じセッションのものが1行にまとまっている。
+// unread_count はその行の未読の件数（まとめない種類は 0 か 1）。相手のプロフィールが無ければ表示名・アイコンは null。
+// 上書きの理由は TellerSearchResult と同じ
+type ListMyNotificationsRow =
+  Database['public']['Functions']['list_my_notifications']['Returns'][number];
+export type NotificationListItem = Omit<
+  ListMyNotificationsRow,
+  'type' | 'partner_display_name' | 'partner_avatar_path'
+> & {
+  type: NotificationType;
+  partner_display_name: string | null;
+  partner_avatar_path: string | null;
+};
+
 // get_teller の結果（占い師詳細）。上書きの理由は TellerSearchResult と同じ
 type GetTellerRow = Database['public']['Functions']['get_teller']['Returns'][number];
 export type TellerDetail = Omit<
