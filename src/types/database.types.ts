@@ -486,6 +486,7 @@ export type Database = {
         Args: { p_post_id: string }
         Returns: undefined
       }
+      count_unread_notifications: { Args: never; Returns: number }
       expire_session_requests: { Args: never; Returns: undefined }
       get_consultation_post: {
         Args: { p_post_id: string }
@@ -530,6 +531,15 @@ export type Database = {
           status: string
         }[]
       }
+      list_grouped_notifications: {
+        Args: never
+        Returns: {
+          created_at: string
+          session_id: string
+          type: string
+          unread_count: number
+        }[]
+      }
       list_my_consultation_posts: {
         Args: never
         Returns: {
@@ -539,6 +549,17 @@ export type Database = {
           created_at: string
           id: string
           status: string
+        }[]
+      }
+      list_my_notifications: {
+        Args: never
+        Returns: {
+          created_at: string
+          partner_avatar_path: string
+          partner_display_name: string
+          session_id: string
+          type: string
+          unread_count: number
         }[]
       }
       list_teller_reviews: {
