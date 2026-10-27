@@ -8,12 +8,14 @@ import { useEffect, useState } from 'react';
 type Props = {
   userId: string;
   tellerId: string;
+  // 登録・解除が保存できたときに、新しい状態を渡す（詳細画面の人数の表示を合わせるため）
+  onChange: (isFavorite: boolean) => void;
 };
 
 // 占い師詳細のヘッダー右端に置く、お気に入りの登録・解除のボタン（登録済みならハートを塗る）。
 // 登録状態を確かめ終わるまでと、確かめられなかったときは出さない
 // （実際と違う状態を出すと、押したときに逆の操作になるため）
-export function FavoriteButton({ userId, tellerId }: Props) {
+export function FavoriteButton({ userId, tellerId, onChange }: Props) {
   const showError = useErrorToast();
   const [isFavorite, setIsFavorite] = useState<boolean | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -49,6 +51,7 @@ export function FavoriteButton({ userId, tellerId }: Props) {
       showError(isFavorite ? 'お気に入りから外せませんでした' : 'お気に入りに登録できませんでした');
     } else {
       setIsFavorite(!isFavorite);
+      onChange(!isFavorite);
     }
     setIsSaving(false);
   }

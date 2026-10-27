@@ -19,7 +19,7 @@ type Props = {
   teller: TellerDetail;
 };
 
-// 詳細画面の上部。帯・アバター・名前・バッジと、評価・セッション数・活動を始めた月の数字の行
+// 詳細画面の上部。帯・アバター・名前・修行期間・活動を始めた月・バッジと、評価・セッション数・お気に入りの人数の数字の行
 export function TellerProfileHeader({ teller }: Props) {
   return (
     <Card className="gap-0 overflow-hidden p-0">
@@ -33,11 +33,15 @@ export function TellerProfileHeader({ teller }: Props) {
 
         <VStack>
           <Heading size="xl">{teller.display_name}</Heading>
-          {teller.training_period && (
+          {/* 活動を始めた月は、修行期間が未入力でも右端に出す */}
+          <HStack className="justify-between" space="sm">
             <Text size="sm" className="text-muted-foreground">
-              修行 {teller.training_period}
+              {teller.training_period && `修行 ${teller.training_period}`}
             </Text>
-          )}
+            <Text size="sm" className="text-muted-foreground">
+              {formatYearMonth(teller.created_at)}から活動
+            </Text>
+          </HStack>
         </VStack>
 
         {(!teller.is_accepting || isNewcomer(teller.session_count)) && (
@@ -81,14 +85,17 @@ export function TellerProfileHeader({ teller }: Props) {
               セッション
             </Text>
           </VStack>
-          <VStack className="flex-1 items-center">
-            <Text size="lg" className="font-bold">
-              {formatYearMonth(teller.created_at)}
-            </Text>
-            <Text size="xs" className="text-muted-foreground">
-              から活動
-            </Text>
-          </VStack>
+          {/* 0人のときは出さない（まだ登録されていない新人が見劣りしないように） */}
+          {teller.favorite_count > 0 && (
+            <VStack className="flex-1 items-center">
+              <Text size="lg" className="font-bold">
+                {teller.favorite_count}人
+              </Text>
+              <Text size="xs" className="text-muted-foreground">
+                お気に入り
+              </Text>
+            </VStack>
+          )}
         </HStack>
       </VStack>
     </Card>

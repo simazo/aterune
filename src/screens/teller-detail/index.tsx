@@ -102,6 +102,14 @@ export function TellerDetail({ tellerId }: Props) {
   // お気に入りのボタンは、占い師を表示できていて、自分のプロフィールでないときだけ右端に出す。
   // 占い師が変わったら作り直し、前の占い師の保存結果が新しい占い師の表示に反映されないようにする（key）
   const canFavorite = !isLoading && !!teller && !!userId && userId !== teller.teller_id;
+
+  // 登録・解除のあとは読み直さず、表示している人数だけを増減する
+  function handleFavoriteChange(isFavorite: boolean) {
+    setTeller((current) =>
+      current && { ...current, favorite_count: current.favorite_count + (isFavorite ? 1 : -1) }
+    );
+  }
+
   const header = (
     <Stack.Screen
       options={{
@@ -110,7 +118,14 @@ export function TellerDetail({ tellerId }: Props) {
         headerBackButtonDisplayMode: 'minimal',
         headerRight:
           canFavorite && userId
-            ? () => <FavoriteButton key={tellerId} userId={userId} tellerId={tellerId} />
+            ? () => (
+                <FavoriteButton
+                  key={tellerId}
+                  userId={userId}
+                  tellerId={tellerId}
+                  onChange={handleFavoriteChange}
+                />
+              )
             : undefined,
       }}
     />
