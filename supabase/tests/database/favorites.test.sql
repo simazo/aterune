@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(13);
 
 -- ===== テストデータ(postgres 権限) =====
 insert into auth.users (id, email) values
@@ -112,7 +112,15 @@ select throws_ok(
   '占い師でない teller_id は外部キー違反'
 );
 
--- 12. 占い師の登録を消すと favorites も連鎖削除される
+-- 12. 自分自身はお気に入り登録できない(占い師は相談者にもなれるため)
+select throws_ok(
+  $$ insert into public.favorites (consultant_id, teller_id) values
+     ('00000000-0000-0000-0000-0000000000e3', '00000000-0000-0000-0000-0000000000e3') $$,
+  '23514', null,
+  '自分自身はお気に入り登録できない'
+);
+
+-- 13. 占い師の登録を消すと favorites も連鎖削除される
 delete from public.teller_profiles
   where profile_id = '00000000-0000-0000-0000-0000000000e3';
 select is(

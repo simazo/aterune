@@ -3,7 +3,9 @@ create table public.favorites (
   consultant_id uuid not null references auth.users (id) on delete cascade,
   teller_id     uuid not null references public.teller_profiles (profile_id) on delete cascade,
   created_at    timestamptz not null default now(),
-  primary key (consultant_id, teller_id)
+  primary key (consultant_id, teller_id),
+  -- 占い師は相談者にもなれるため、自分自身を登録できないようにする
+  constraint favorites_not_self_check check (consultant_id <> teller_id)
 );
 
 comment on table  public.favorites               is '相談者の占い師お気に入り';

@@ -531,6 +531,21 @@ export type Database = {
           status: string
         }[]
       }
+      list_favorite_tellers: {
+        Args: never
+        Returns: {
+          avatar_path: string
+          average_rating: number
+          display_name: string
+          is_accepting: boolean
+          review_count: number
+          self_pr: string
+          session_count: number
+          tags: Json
+          teller_id: string
+          training_period: string
+        }[]
+      }
       list_grouped_notifications: {
         Args: never
         Returns: {
