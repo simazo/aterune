@@ -399,6 +399,7 @@ export type Database = {
         Row: {
           average_rating: number | null
           created_at: string
+          favorite_count: number
           is_accepting: boolean
           profile_id: string
           requires_birthdate: boolean
@@ -411,6 +412,7 @@ export type Database = {
         Insert: {
           average_rating?: number | null
           created_at?: string
+          favorite_count?: number
           is_accepting?: boolean
           profile_id: string
           requires_birthdate?: boolean
@@ -423,6 +425,7 @@ export type Database = {
         Update: {
           average_rating?: number | null
           created_at?: string
+          favorite_count?: number
           is_accepting?: boolean
           profile_id?: string
           requires_birthdate?: boolean
@@ -508,6 +511,7 @@ export type Database = {
           average_rating: number
           created_at: string
           display_name: string
+          favorite_count: number
           is_accepting: boolean
           requires_birthdate: boolean
           review_count: number

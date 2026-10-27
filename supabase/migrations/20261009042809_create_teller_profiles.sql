@@ -14,6 +14,7 @@ create table public.teller_profiles (
   average_rating     numeric(3, 2),
   review_count       integer not null default 0,
   session_count      integer not null default 0,
+  favorite_count     integer not null default 0,
   created_at         timestamptz not null default now(),
   updated_at         timestamptz not null default now(),
 
@@ -37,6 +38,7 @@ comment on column public.teller_profiles.training_period is '修行期間(本人
 comment on column public.teller_profiles.average_rating is '平均評価(reviews投稿時にトリガーで自動更新されるキャッシュ値。手動更新しない)';
 comment on column public.teller_profiles.review_count is '評価件数(reviews投稿時にトリガーで自動更新されるキャッシュ値。手動更新しない)';
 comment on column public.teller_profiles.session_count is '完了したセッション数(completed / auto_completed。sessions の status 変化時にトリガーで自動更新されるキャッシュ値。手動更新しない)';
+comment on column public.teller_profiles.favorite_count is 'お気に入りに登録している人数(favorites の登録・解除時にトリガーで自動更新されるキャッシュ値。手動更新しない)';
 
 -- 2. updated_at の自動更新 ----------------------------------
 create trigger teller_profiles_set_updated_at
@@ -92,7 +94,7 @@ grant select on public.teller_profiles to anon;
 grant select on public.teller_profiles to authenticated;
 
 -- 登録(insert)は save_teller_profile だけで行う(占術タグの無い占い師を作らせないため)。
--- average_rating / review_count / session_count は自分で書き換えさせない(列を限定)
+-- average_rating / review_count / session_count / favorite_count は自分で書き換えさせない(列を限定)
 grant update (self_pr, is_accepting, requires_birthdate, training_period)
   on public.teller_profiles to authenticated;
 

@@ -1,7 +1,7 @@
 -- get_teller: 占い師1人分の詳細(相談者の占い師詳細画面用)。
 -- 依存: public.teller_profiles、public.profiles、public.list_teller_tags_json
 --
--- 返す列は search_tellers の1行に、詳細画面で使う requires_birthdate・created_at を足したもの。
+-- 返す列は search_tellers の1行に、詳細画面で使う requires_birthdate・favorite_count・created_at を足したもの。
 -- tags の中身と並びは list_teller_tags_json が決める(search_tellers と共通)。
 -- 占い師登録の無いユーザー・退会したユーザー・存在しない ID なら 0 行。
 -- 検索と違い、ログイン中のユーザー自身も返す(自分の詳細画面を開けるように)。
@@ -19,6 +19,7 @@ returns table (
   average_rating     numeric,
   review_count       integer,
   session_count      integer,
+  favorite_count     integer,
   created_at         timestamptz,
   tags               jsonb
 )
@@ -37,6 +38,7 @@ as $$
     tp.average_rating,
     tp.review_count,
     tp.session_count,
+    tp.favorite_count,
     tp.created_at,
     public.list_teller_tags_json(tp.profile_id)
   from public.teller_profiles tp
@@ -46,7 +48,7 @@ as $$
 $$;
 
 comment on function public.get_teller(uuid) is
-  '占い師1人分の詳細。search_tellers の列に requires_birthdate・created_at を加えたもの。占い師でない・退会した・存在しない ID なら 0 行';
+  '占い師1人分の詳細。search_tellers の列に requires_birthdate・favorite_count・created_at を加えたもの。占い師でない・退会した・存在しない ID なら 0 行';
 
 revoke all on function public.get_teller(uuid) from public, anon, authenticated;
 grant execute on function public.get_teller(uuid) to anon, authenticated;

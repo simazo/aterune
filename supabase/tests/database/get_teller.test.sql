@@ -18,6 +18,7 @@ update public.teller_profiles
    set average_rating = 4.50,
        review_count   = 2,
        session_count  = 3,
+       favorite_count = 5,
        created_at     = '2026-10-01 12:00:00+09'
  where profile_id = '00000000-0000-0000-0000-0000000000e1';
 
@@ -55,12 +56,12 @@ set local role anon;
 -- 3. 詳細画面用の列
 select results_eq(
   $$ select teller_id, display_name, avatar_path, self_pr, training_period, is_accepting, requires_birthdate,
-            average_rating, review_count, session_count, created_at
+            average_rating, review_count, session_count, favorite_count, created_at
        from public.get_teller('00000000-0000-0000-0000-0000000000e1') $$,
   $$ values ('00000000-0000-0000-0000-0000000000e1'::uuid, 'テスト占い師1'::text,
              '00000000-0000-0000-0000-0000000000e1/1730000000000.jpg'::text, 'e1 の自己PR'::text,
-             '半年'::text, true, false, 4.50::numeric, 2, 3, '2026-10-01 12:00:00+09'::timestamptz) $$,
-  '指定した占い師の表示名・アイコンのパス・自己PR・修行期間・受付状態・生年月日の要否・評価・件数・セッション数・登録日時を返す'
+             '半年'::text, true, false, 4.50::numeric, 2, 3, 5, '2026-10-01 12:00:00+09'::timestamptz) $$,
+  '指定した占い師の表示名・アイコンのパス・自己PR・修行期間・受付状態・生年月日の要否・評価・件数・セッション数・お気に入りの人数・登録日時を返す'
 );
 
 -- 4. tags は種類 → 表示順の順
@@ -75,9 +76,10 @@ select is(
 
 -- 5. 受付停止中・生年月日必須・未入力の項目
 select results_eq(
-  $$ select self_pr, training_period, is_accepting, requires_birthdate, average_rating, review_count, session_count
+  $$ select self_pr, training_period, is_accepting, requires_birthdate, average_rating, review_count, session_count,
+            favorite_count
        from public.get_teller('00000000-0000-0000-0000-0000000000e2') $$,
-  $$ values (null::text, null::text, false, true, null::numeric, 0, 0) $$,
+  $$ values (null::text, null::text, false, true, null::numeric, 0, 0, 0) $$,
   '受付停止中・生年月日必須の占い師も返し、未入力の項目と評価なしは null'
 );
 

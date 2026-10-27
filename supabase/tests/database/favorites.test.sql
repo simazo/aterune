@@ -1,11 +1,12 @@
 begin;
-select plan(13);
+select plan(18);
 
 -- ===== テストデータ(postgres 権限) =====
 insert into auth.users (id, email) values
   ('00000000-0000-0000-0000-0000000000e1', 'alice@example.com'),
   ('00000000-0000-0000-0000-0000000000e2', 'bob@example.com'),
-  ('00000000-0000-0000-0000-0000000000e3', 'teller@example.com');
+  ('00000000-0000-0000-0000-0000000000e3', 'teller@example.com'),
+  ('00000000-0000-0000-0000-0000000000e4', 'carol@example.com');
 
 insert into public.teller_profiles (profile_id) values
   ('00000000-0000-0000-0000-0000000000e3');
@@ -120,9 +121,70 @@ select throws_ok(
   '自分自身はお気に入り登録できない'
 );
 
--- 13. 占い師の登録を消すと favorites も連鎖削除される
-delete from public.teller_profiles
-  where profile_id = '00000000-0000-0000-0000-0000000000e3';
+-- ===== お気に入りの人数(teller_profiles.favorite_count)=====
+-- この時点の登録は bob の1件だけ
+-- 13. 相談者が登録すると数え直す。carol からは RLS で bob の行が見えないが、それも数える
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000e4","role":"authenticated"}', true);
+insert into public.favorites (consultant_id, teller_id) values
+  ('00000000-0000-0000-0000-0000000000e4', '00000000-0000-0000-0000-0000000000e3');
+reset role;
+
+select is(
+  (select favorite_count from public.teller_profiles
+    where profile_id = '00000000-0000-0000-0000-0000000000e3'),
+  2,
+  '登録すると favorite_count が増える(RLS で見えない他人の登録も数える)'
+);
+
+-- 14. 解除すると数え直す
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000e4","role":"authenticated"}', true);
+delete from public.favorites
+  where consultant_id = '00000000-0000-0000-0000-0000000000e4';
+reset role;
+
+select is(
+  (select favorite_count from public.teller_profiles
+    where profile_id = '00000000-0000-0000-0000-0000000000e3'),
+  1,
+  '解除すると favorite_count が減る'
+);
+
+-- 15. 相談者が退会する(auth.users の削除で favorites が連鎖削除される)と数え直す
+delete from auth.users where id = '00000000-0000-0000-0000-0000000000e2';
+
+select is(
+  (select favorite_count from public.teller_profiles
+    where profile_id = '00000000-0000-0000-0000-0000000000e3'),
+  0,
+  '相談者が退会すると favorite_count が減る'
+);
+
+-- 16. 占い師本人は favorite_count を書き換えられない
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000e3","role":"authenticated"}', true);
+select throws_ok(
+  $$ update public.teller_profiles set favorite_count = 100
+      where profile_id = '00000000-0000-0000-0000-0000000000e3' $$,
+  '42501', null,
+  '占い師本人は favorite_count を書き換えられない'
+);
+reset role;
+
+-- 17. 占い師の登録を消しても、連鎖削除される favorites のトリガーでエラーにならない
+insert into public.favorites (consultant_id, teller_id) values
+  ('00000000-0000-0000-0000-0000000000e4', '00000000-0000-0000-0000-0000000000e3');
+select lives_ok(
+  $$ delete from public.teller_profiles
+      where profile_id = '00000000-0000-0000-0000-0000000000e3' $$,
+  'お気に入りされている占い師の登録を消しても、エラーにならない'
+);
+
+-- 18. 占い師の登録を消すと favorites も連鎖削除される
 select is(
   (select count(*)::int from public.favorites
     where teller_id = '00000000-0000-0000-0000-0000000000e3'),

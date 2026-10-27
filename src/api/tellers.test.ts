@@ -68,6 +68,7 @@ describe('getTeller', () => {
   const TELLER_DETAIL = {
     ...TELLER,
     requires_birthdate: true,
+    favorite_count: 1,
     created_at: '2026-10-01T03:00:00+00:00',
   };
 
