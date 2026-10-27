@@ -82,6 +82,16 @@ export function setForegroundNotificationHandler() {
   });
 }
 
+// アプリが前面にある間にプッシュ通知を受け取ったら listener を呼ぶ（ベルの未読の件数を読み直すため）。
+// 戻り値は購読をやめる関数
+export function subscribeToReceivedNotifications(listener: () => void): () => void {
+  // Web版はプッシュ通知を受け取らない
+  if (Platform.OS === 'web') return () => {};
+
+  const subscription = Notifications.addNotificationReceivedListener(listener);
+  return () => subscription.remove();
+}
+
 // 通知欄に出ているこのアプリの通知をすべて消す（ログアウト時に、前のアカウントの通知が見えたままにならないように）
 // 失敗してもログアウトの流れを止めないよう、例外は投げない
 export async function dismissPushNotifications() {

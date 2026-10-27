@@ -1,4 +1,5 @@
 import { ClipboardListIcon, UserIcon } from '@/components/icons';
+import { NotificationBell } from '@/components/notification-bell';
 import { Icon, MessageCircleIcon, SearchIcon } from '@/components/ui/icon';
 import { Tabs } from 'expo-router/js-tabs';
 import type { ComponentProps } from 'react';
@@ -14,10 +15,11 @@ function TabIcon({ as, color }: TabIconProps) {
   return <Icon as={as} color={color} size="xl" />;
 }
 
-// タブは全員に同じものを出す。占い師だけの機能（お悩みへの応募など）は、各画面の中で profiles.is_teller を見て出し分ける
+// タブは全員に同じものを出す。占い師だけの機能（お悩みへの応募など）は、各画面の中で profiles.is_teller を見て出し分ける。
+// どのタブでも、ヘッダー右上に通知のベルを出す
 export default function TabsLayout() {
   return (
-    <Tabs>
+    <Tabs screenOptions={{ headerRight: () => <NotificationBell /> }}>
       <Tabs.Screen
         name="index"
         options={{

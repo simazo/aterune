@@ -7,6 +7,8 @@ import { renderRouter, screen } from 'expo-router/testing-library';
 import { Text } from 'react-native';
 
 jest.mock('@/hooks/use-auth', () => ({ useAuth: jest.fn() }));
+// タブのヘッダーのベルは未読の件数を Supabase から読むため、何も描かないものに差し替える（このテストの対象外）
+jest.mock('@/components/notification-bell', () => ({ NotificationBell: () => null }));
 
 const mockUseAuth = jest.mocked(useAuth);
 
