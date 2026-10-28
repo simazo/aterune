@@ -11,6 +11,7 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
   user_already_exists: 'このメールアドレスはすでに登録されています',
   email_exists: 'このメールアドレスはすでに登録されています',
   weak_password: 'パスワードが簡単すぎます。別のパスワードを設定してください',
+  same_password: '今と同じパスワードは設定できません。別のパスワードを入力してください',
   email_address_invalid: 'このメールアドレスは使用できません',
   over_email_send_rate_limit:
     'メールの送信回数が上限に達しました。しばらく時間をおいて、もう一度お試しください',

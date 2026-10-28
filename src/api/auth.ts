@@ -4,15 +4,16 @@ import { supabase } from '@/lib/supabase';
 import { Platform } from 'react-native';
 import { deletePushTokenForCurrentDevice } from './push-tokens';
 
-const MOBILE_AUTH_REDIRECT_URL = 'aterune://auth/confirmed';
+const MOBILE_AUTH_REDIRECT_BASE_URL = 'aterune://';
 
-// 確認メールのリンクの戻り先。Web版は今開いているオリジン（開発中はlocalhost、本番は本番ドメイン）の
-// /auth/confirmed に戻す。どのオリジンもSupabaseダッシュボードのRedirect URLs許可リストへの登録が必要。
-function getEmailRedirectTo() {
+// メール（確認・パスワード再設定）のリンクの戻り先。pathは先頭の/を付けずに渡す（例：auth/confirmed）。
+// Web版は今開いているオリジン（開発中はlocalhost、本番は本番ドメイン）に戻す。
+// どの戻り先もSupabaseダッシュボードのRedirect URLs許可リストへの登録が必要。
+function getEmailRedirectTo(path: string) {
   if (Platform.OS === 'web') {
-    return `${window.location.origin}/auth/confirmed`;
+    return `${window.location.origin}/${path}`;
   }
-  return MOBILE_AUTH_REDIRECT_URL;
+  return `${MOBILE_AUTH_REDIRECT_BASE_URL}${path}`;
 }
 
 export async function signUpWithEmail(email: string, password: string, displayName: string) {
@@ -21,7 +22,7 @@ export async function signUpWithEmail(email: string, password: string, displayNa
     password,
     options: {
       data: { display_name: displayName },
-      emailRedirectTo: getEmailRedirectTo(),
+      emailRedirectTo: getEmailRedirectTo('auth/confirmed'),
     },
   });
 
@@ -30,6 +31,18 @@ export async function signUpWithEmail(email: string, password: string, displayNa
 
 export async function signInWithEmail(email: string, password: string) {
   return supabase.auth.signInWithPassword({ email, password });
+}
+
+// 未登録のメールアドレスでもエラーは返らない（登録の有無を外から調べられないようにするSupabaseの仕様）
+export async function sendPasswordResetEmail(email: string) {
+  return supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: getEmailRedirectTo('auth/reset-password'),
+  });
+}
+
+// 再設定メールのリンクでログインした状態で呼ぶ
+export async function updatePassword(password: string) {
+  return supabase.auth.updateUser({ password });
 }
 
 export type EmailConfirmationResult =

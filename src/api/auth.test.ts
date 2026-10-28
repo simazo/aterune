@@ -2,7 +2,14 @@ import { logger } from '@/lib/logger';
 import { dismissPushNotifications } from '@/lib/push-notifications';
 import { supabase } from '@/lib/supabase';
 import { Platform } from 'react-native';
-import { createSessionFromUrl, signInWithEmail, signOut, signUpWithEmail } from './auth';
+import {
+  createSessionFromUrl,
+  sendPasswordResetEmail,
+  signInWithEmail,
+  signOut,
+  signUpWithEmail,
+  updatePassword,
+} from './auth';
 import { deletePushTokenForCurrentDevice } from './push-tokens';
 
 jest.mock('@/lib/supabase', () => ({
@@ -12,6 +19,8 @@ jest.mock('@/lib/supabase', () => ({
       signInWithPassword: jest.fn(),
       setSession: jest.fn(),
       signOut: jest.fn(),
+      resetPasswordForEmail: jest.fn(),
+      updateUser: jest.fn(),
     },
   },
 }));
@@ -92,6 +101,55 @@ describe('signInWithEmail', () => {
       email: 'user@example.com',
       password: 'secret',
     });
+    expect(result).toBe(response);
+  });
+});
+
+describe('sendPasswordResetEmail', () => {
+  beforeEach(() => {
+    mockAuth.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null } as never);
+  });
+
+  it('モバイルではアプリのURLスキームの/auth/reset-passwordを戻り先にする', async () => {
+    await sendPasswordResetEmail('user@example.com');
+
+    expect(mockAuth.resetPasswordForEmail).toHaveBeenCalledWith('user@example.com', {
+      redirectTo: 'aterune://auth/reset-password',
+    });
+  });
+
+  it('Webでは今開いているオリジンの/auth/reset-passwordを戻り先にする', async () => {
+    jest.replaceProperty(Platform, 'OS', 'web');
+    const originalWindow = globalThis.window;
+    globalThis.window = { location: { origin: 'http://localhost:8081' } } as never;
+
+    try {
+      await sendPasswordResetEmail('user@example.com');
+    } finally {
+      globalThis.window = originalWindow;
+    }
+
+    expect(mockAuth.resetPasswordForEmail).toHaveBeenCalledWith('user@example.com', {
+      redirectTo: 'http://localhost:8081/auth/reset-password',
+    });
+  });
+
+  it('結果をそのまま返す', async () => {
+    const response = { data: null, error: { code: 'over_email_send_rate_limit' } };
+    mockAuth.resetPasswordForEmail.mockResolvedValue(response as never);
+
+    await expect(sendPasswordResetEmail('user@example.com')).resolves.toBe(response);
+  });
+});
+
+describe('updatePassword', () => {
+  it('入力したパスワードでupdateUserを呼び、結果を返す', async () => {
+    const response = { data: { user: null }, error: null };
+    mockAuth.updateUser.mockResolvedValue(response as never);
+
+    const result = await updatePassword('new-secret');
+
+    expect(mockAuth.updateUser).toHaveBeenCalledWith({ password: 'new-secret' });
     expect(result).toBe(response);
   });
 });
