@@ -34,6 +34,7 @@ function renderApp(initialUrl: string) {
       '(app)/(tabs)/mypage': () => <Text>マイページ画面</Text>,
       '(auth)/_layout': AuthLayout,
       '(auth)/login': () => <Text>ログイン</Text>,
+      '(auth)/forgot-password': () => <Text>パスワード再設定メールの送信画面</Text>,
     },
     { initialUrl }
   );
@@ -93,5 +94,26 @@ describe('(auth) レイアウト', () => {
 
     expect(router.getPathname()).toBe('/login');
     expect(screen.getByText('ログイン')).toBeOnTheScreen();
+  });
+
+  it('ログイン済みでパスワード再設定メールの送信画面を開くと占い師検索のタブへリダイレクトする', async () => {
+    setSignedIn(true);
+
+    const router = renderApp('/forgot-password');
+    await router;
+
+    expect(router.getPathname()).toBe('/');
+    expect(screen.getByText('占い師検索画面')).toBeOnTheScreen();
+    expect(screen.queryByText('パスワード再設定メールの送信画面')).toBeNull();
+  });
+
+  it('未ログインならパスワード再設定メールの送信画面をそのまま表示する', async () => {
+    setSignedIn(false);
+
+    const router = renderApp('/forgot-password');
+    await router;
+
+    expect(router.getPathname()).toBe('/forgot-password');
+    expect(screen.getByText('パスワード再設定メールの送信画面')).toBeOnTheScreen();
   });
 });

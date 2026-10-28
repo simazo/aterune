@@ -56,6 +56,12 @@ export function Login() {
         {isLoggingIn ? <ButtonSpinner /> : <ButtonText>ログイン</ButtonText>}
       </Button>
 
+      <Link onPress={() => router.push('/forgot-password')}>
+        <LinkText className="mt-2 text-center" size="sm">
+          パスワードをお忘れの方
+        </LinkText>
+      </Link>
+
       <Link onPress={() => router.push('/signup')}>
         <LinkText className="mt-2 text-center" size="sm">
           アカウントをお持ちでない方はこちら
