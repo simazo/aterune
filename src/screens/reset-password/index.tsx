@@ -41,10 +41,14 @@ export function ResetPassword() {
     if (!url) return;
     // 同じURLを二重に処理しない（StrictModeでのeffect二重実行対策）
     if (handledUrl.current === url) return;
+    const isFirstUrl = handledUrl.current === null;
     handledUrl.current = url;
 
     (async () => {
       const linkResult = await createSessionFromUrl(url);
+      // Web では、#以降を消したあとの URL（トークンなし）が window の message イベントで届き直すことがある。
+      // 先に出した結果（入力欄・リンク無効の案内）を「リンクから開いていない」で上書きしない
+      if (linkResult.status === 'no-params' && !isFirstUrl) return;
       setLinkResult(linkResult);
       // リンクを開いた時点でログイン状態になる（パスワードを変えずに離れてもログインしたまま）ため、ここで保存する
       // （savePushTokenForCurrentUser は失敗しても例外を投げないので、待たなくてよい）

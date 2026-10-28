@@ -98,6 +98,22 @@ describe('ResetPassword', () => {
     expect(mockSavePushToken).toHaveBeenCalled();
   });
 
+  it('ログインできたあとにトークンなしのURLが届いても、入力欄を残す', async () => {
+    // Web では #以降を消したあとの URL が、window の message イベントで届き直すことがある
+    mockCreateSessionFromUrl.mockImplementation(async (url) =>
+      url === RESET_URL ? { status: 'success' } : { status: 'no-params' }
+    );
+    await render(<ResetPassword />);
+    await screen.findByPlaceholderText('新しいパスワード');
+
+    mockUseLinkingURL.mockReturnValue('http://localhost:8081/auth/reset-password');
+    await screen.rerender(<ResetPassword />);
+
+    await waitFor(() => expect(mockCreateSessionFromUrl).toHaveBeenCalledTimes(2));
+    expect(screen.getByPlaceholderText('新しいパスワード')).toBeOnTheScreen();
+    expect(screen.queryByText('再設定メールを送り直す')).toBeNull();
+  });
+
   it('パスワードの更新に失敗したら、エラーを出して移動せずに入力欄を残す', async () => {
     mockCreateSessionFromUrl.mockResolvedValue({ status: 'success' });
     mockUpdatePassword.mockResolvedValue({
