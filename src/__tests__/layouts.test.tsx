@@ -35,6 +35,7 @@ function renderApp(initialUrl: string) {
       '(auth)/_layout': AuthLayout,
       '(auth)/login': () => <Text>ログイン</Text>,
       '(auth)/forgot-password': () => <Text>パスワード再設定メールの送信画面</Text>,
+      'auth/reset-password': () => <Text>新しいパスワードの設定画面</Text>,
     },
     { initialUrl }
   );
@@ -115,5 +116,21 @@ describe('(auth) レイアウト', () => {
 
     expect(router.getPathname()).toBe('/forgot-password');
     expect(screen.getByText('パスワード再設定メールの送信画面')).toBeOnTheScreen();
+  });
+});
+
+// メールのリンクで戻った時点でログイン状態になるため、どちらのグループにも属さない /auth/ の下に置いている
+describe('/auth/reset-password', () => {
+  it.each([
+    ['ログイン済み', true],
+    ['未ログイン', false],
+  ])('%sでもリダイレクトせずに表示する', async (_label, signedIn) => {
+    setSignedIn(signedIn);
+
+    const router = renderApp('/auth/reset-password');
+    await router;
+
+    expect(router.getPathname()).toBe('/auth/reset-password');
+    expect(screen.getByText('新しいパスワードの設定画面')).toBeOnTheScreen();
   });
 });
