@@ -3,6 +3,7 @@ import TabsLayout from '@/app/(app)/(tabs)/_layout';
 import AppLayout from '@/app/(app)/_layout';
 import AuthLayout from '@/app/(auth)/_layout';
 import { useAuth } from '@/hooks/use-auth';
+import { RootNavigator } from '@/navigation/root-navigator';
 import { renderRouter, screen } from 'expo-router/testing-library';
 import { Text } from 'react-native';
 
@@ -19,13 +20,14 @@ function setSignedIn(signedIn: boolean) {
   } as never);
 }
 
-// 本物の (app) / (tabs) / (auth) レイアウトに、文言を出すだけの仮の画面を組み合わせる。
+// 本物のルートのナビゲーターと (app) / (tabs) / (auth) レイアウトに、文言を出すだけの仮の画面を組み合わせる。
 // 画面の文言は、タブのラベル（占い師を探す・お悩みを探す・やり取り・マイページ）と重ならないようにする。
 // getPathname() は renderRouter の戻り値（Promise）に付くため、呼び出し側で戻り値を保持したまま await する。
 // expo-router の toHavePathname は型定義が無いので使わない
 function renderApp(initialUrl: string) {
   return renderRouter(
     {
+      _layout: RootNavigator,
       '(app)/_layout': AppLayout,
       '(app)/(tabs)/_layout': TabsLayout,
       '(app)/(tabs)/index': () => <Text>占い師検索画面</Text>,

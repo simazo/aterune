@@ -73,6 +73,7 @@ typed routes の型（`.expo/types/router.d.ts`、gitignore 済み）は `npm st
 ```
 src/
 ├── app/            # ルーティング専用。screens を描画するだけの薄いファイル（テストは置かない）
+├── navigation/     # レイアウトから切り出したナビゲーター（Stack・Tabs とその画面オプション）
 ├── screens/<name>/ # 画面単位の UI・フォーム処理（index.tsx、schema.ts）
 │   └── components/ # その画面専用のサブコンポーネント（未作成）
 ├── components/     # 2画面以上で使う共通コンポーネント
@@ -92,6 +93,7 @@ supabase/
 ```
 
 - **ルートファイルを薄くする理由**：UI とロジックを `screens/` に置くと、同じ画面を複数のルートから使え、ルートに依存せずテストできる。
+- **ナビゲーターを `navigation/` に切り出す場合**：レイアウトが Provider や読み込み時の処理（スプラッシュ・通知の設定など）を含んでいて、テストでそのまま読み込めないときに、Stack・Tabs の部分だけを切り出す。レイアウトとテストの両方が同じ部品を使うので、本物の設定（画面オプションなど）をテストで確かめられる。そのまま読み込めるレイアウト（`(app)/_layout.tsx` など）は切り出さない。
 - **データの取得・更新は `api/` に置く**：画面やフックは `supabase` を直接呼ばず、`api/` の関数を呼ぶ。画面のテストでは `api/` をモックすればよい。`lib/` は SDK の初期化・設定と、DB を使わない端末側の処理（通知の許可・token の取得など）だけにする。
   - 例外：`AuthProvider` は SDK のログイン状態の購読（`getSession()`・`onAuthStateChange()`）のため `@/lib/supabase` を直接使う。
 - **Service Role Key はアプリのコードに置かない**：RLS を越える処理（退会時のユーザー削除、外部 API への送信、Webhook など）は、DB 内で完結するものは `security definer` の関数・トリガー、外部とのやり取りを伴うものは Supabase Edge Functions（`supabase/functions/`）に書く。Expo の API ルート（`app/api/`）や `server/` フォルダは使わない（Web は `static` 出力で、別にサーバーを運用しないため）。

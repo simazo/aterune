@@ -2,8 +2,9 @@ import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
 import { useAuth } from '@/hooks/use-auth';
 import { DARK_NAVIGATION_THEME, LIGHT_NAVIGATION_THEME } from '@/lib/navigation-theme';
 import { setForegroundNotificationHandler } from '@/lib/push-notifications';
+import { RootNavigator } from '@/navigation/root-navigator';
 import { AuthProvider } from '@/providers/auth-provider';
-import { Slot, ThemeProvider } from 'expo-router';
+import { ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
@@ -32,7 +33,7 @@ function RootLayoutContent() {
   return (
     <GluestackUIProvider mode="system">
       <ThemeProvider value={colorScheme === 'dark' ? DARK_NAVIGATION_THEME : LIGHT_NAVIGATION_THEME}>
-        {!loading && <Slot />}
+        {!loading && <RootNavigator />}
       </ThemeProvider>
     </GluestackUIProvider>
   );
