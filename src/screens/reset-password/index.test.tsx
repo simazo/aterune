@@ -2,10 +2,10 @@ import { createSessionFromUrl, updatePassword } from '@/api/auth';
 import { savePushTokenForCurrentUser } from '@/api/push-tokens';
 import { useAuth } from '@/hooks/use-auth';
 import { useErrorToast } from '@/hooks/use-error-toast';
+import { useReplaceAfterDismiss } from '@/hooks/use-replace-after-dismiss';
 import { useSuccessToast } from '@/hooks/use-success-toast';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { useLinkingURL } from 'expo-linking';
-import { useRouter } from 'expo-router';
 import { ResetPassword } from '.';
 
 jest.mock('@/api/auth', () => ({
@@ -15,9 +15,9 @@ jest.mock('@/api/auth', () => ({
 jest.mock('@/api/push-tokens', () => ({ savePushTokenForCurrentUser: jest.fn() }));
 jest.mock('@/hooks/use-auth', () => ({ useAuth: jest.fn() }));
 jest.mock('@/hooks/use-error-toast', () => ({ useErrorToast: jest.fn() }));
+jest.mock('@/hooks/use-replace-after-dismiss', () => ({ useReplaceAfterDismiss: jest.fn() }));
 jest.mock('@/hooks/use-success-toast', () => ({ useSuccessToast: jest.fn() }));
 jest.mock('expo-linking', () => ({ useLinkingURL: jest.fn() }));
-jest.mock('expo-router', () => ({ useRouter: jest.fn() }));
 
 const mockCreateSessionFromUrl = jest.mocked(createSessionFromUrl);
 const mockUpdatePassword = jest.mocked(updatePassword);
@@ -26,7 +26,7 @@ const mockUseAuth = jest.mocked(useAuth);
 const mockUseLinkingURL = jest.mocked(useLinkingURL);
 const mockShowError = jest.fn();
 const mockShowSuccess = jest.fn();
-const mockReplace = jest.fn();
+const mockReplaceAfterDismiss = jest.fn();
 
 const RESET_URL = 'aterune://auth/reset-password#access_token=AT&refresh_token=RT&type=recovery';
 
@@ -41,7 +41,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(useErrorToast).mockReturnValue(mockShowError);
   jest.mocked(useSuccessToast).mockReturnValue(mockShowSuccess);
-  jest.mocked(useRouter).mockReturnValue({ replace: mockReplace } as never);
+  jest.mocked(useReplaceAfterDismiss).mockReturnValue(mockReplaceAfterDismiss);
   mockUseLinkingURL.mockReturnValue(RESET_URL);
   setSignedIn(false);
 });
@@ -62,7 +62,7 @@ describe('ResetPassword', () => {
     expect(mockCreateSessionFromUrl).not.toHaveBeenCalled();
 
     await fireEvent.press(screen.getByText('再設定メールを送り直す'));
-    expect(mockReplace).toHaveBeenCalledWith('/forgot-password');
+    expect(mockReplaceAfterDismiss).toHaveBeenCalledWith('/forgot-password');
   });
 
   it('リンクが無効なら、入力欄を出さず push token も保存しない', async () => {
@@ -85,7 +85,7 @@ describe('ResetPassword', () => {
     expect(screen.queryByText('再設定メールを送り直す')).toBeNull();
 
     await fireEvent.press(screen.getByText('ホームに戻る'));
-    expect(mockReplace).toHaveBeenCalledWith('/');
+    expect(mockReplaceAfterDismiss).toHaveBeenCalledWith('/');
   });
 
   it('リンクでログインできたら、push token を保存して入力欄を出す', async () => {
@@ -130,7 +130,7 @@ describe('ResetPassword', () => {
         '今と同じパスワードは設定できません。別のパスワードを入力してください'
       )
     );
-    expect(mockReplace).not.toHaveBeenCalled();
+    expect(mockReplaceAfterDismiss).not.toHaveBeenCalled();
     expect(screen.getByPlaceholderText('新しいパスワード')).toBeOnTheScreen();
   });
 
@@ -142,7 +142,7 @@ describe('ResetPassword', () => {
 
     await fillAndSubmit('new-secret');
 
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/'));
+    await waitFor(() => expect(mockReplaceAfterDismiss).toHaveBeenCalledWith('/'));
     expect(mockUpdatePassword).toHaveBeenCalledWith('new-secret');
     expect(mockShowSuccess).toHaveBeenCalledWith('パスワードを変更しました');
   });

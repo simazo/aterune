@@ -5,15 +5,15 @@ import { Heading } from '@/components/ui/heading';
 import { Spinner } from '@/components/ui/spinner';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
+import { useReplaceAfterDismiss } from '@/hooks/use-replace-after-dismiss';
 import { useLinkingURL } from 'expo-linking';
-import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
 const NO_PARAMS: EmailConfirmationResult = { status: 'no-params' };
 
 export function AuthConfirmed() {
-  const router = useRouter();
+  const replaceAfterDismiss = useReplaceAfterDismiss();
   const url = useLinkingURL();
   const [confirmation, setConfirmation] = useState<EmailConfirmationResult | null>(null);
   const handledUrl = useRef<string | null>(null);
@@ -63,7 +63,7 @@ export function AuthConfirmed() {
         <Text size="md" className="text-center">
           ようこそ、アテルネへ。
         </Text>
-        <Button onPress={() => router.replace('/')} className="mt-2">
+        <Button onPress={() => replaceAfterDismiss('/')} className="mt-2">
           <ButtonText>はじめる</ButtonText>
         </Button>
       </VStack>
@@ -80,7 +80,7 @@ export function AuthConfirmed() {
       <Text size="md" className="text-center">
         {message}
       </Text>
-      <Button onPress={() => router.replace('/login')} className="mt-2">
+      <Button onPress={() => replaceAfterDismiss('/login')} className="mt-2">
         <ButtonText>ログイン画面へ</ButtonText>
       </Button>
     </VStack>

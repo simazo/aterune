@@ -8,11 +8,11 @@ import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
 import { useAuth } from '@/hooks/use-auth';
 import { useErrorToast } from '@/hooks/use-error-toast';
+import { useReplaceAfterDismiss } from '@/hooks/use-replace-after-dismiss';
 import { useSuccessToast } from '@/hooks/use-success-toast';
 import { getAuthErrorMessage } from '@/utils/auth-error';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLinkingURL } from 'expo-linking';
-import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Platform } from 'react-native';
@@ -21,7 +21,7 @@ import { resetPasswordSchema, type ResetPasswordFormValues } from './schema';
 const NO_PARAMS: EmailConfirmationResult = { status: 'no-params' };
 
 export function ResetPassword() {
-  const router = useRouter();
+  const replaceAfterDismiss = useReplaceAfterDismiss();
   const url = useLinkingURL();
   const { session } = useAuth();
   const showError = useErrorToast();
@@ -77,7 +77,7 @@ export function ResetPassword() {
         return;
       }
       showSuccess('パスワードを変更しました');
-      router.replace('/');
+      replaceAfterDismiss('/');
     } finally {
       setIsUpdating(false);
     }
@@ -107,11 +107,11 @@ export function ResetPassword() {
         </Text>
         {/* /forgot-password は未ログイン専用で、ログイン中は / へ移されるため、ボタンを分ける */}
         {session ? (
-          <Button onPress={() => router.replace('/')} className="mt-2">
+          <Button onPress={() => replaceAfterDismiss('/')} className="mt-2">
             <ButtonText>ホームに戻る</ButtonText>
           </Button>
         ) : (
-          <Button onPress={() => router.replace('/forgot-password')} className="mt-2">
+          <Button onPress={() => replaceAfterDismiss('/forgot-password')} className="mt-2">
             <ButtonText>再設定メールを送り直す</ButtonText>
           </Button>
         )}
