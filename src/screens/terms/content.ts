@@ -1,20 +1,14 @@
+import type { LegalDocumentSection } from '@/components/legal-document';
+
 // 利用規約の本文。画面（index.tsx）はこれを順に並べて表示するだけにする
 // 文言を変えたら TERMS_UPDATED_AT（最終改定日）も直す
 export const TERMS_ENACTED_AT = '2026年10月29日';
 export const TERMS_UPDATED_AT = '2026年10月29日';
 
-type TermsSection = {
-  heading: string;
-  // 文章の段落
-  paragraphs?: string[];
-  // 箇条書き（段落のあとに表示する）
-  items?: string[];
-};
-
 export const TERMS_INTRO =
   'この利用規約（以下「本規約」）は、aterune 運営事務局（以下「運営」）が提供する占い相談サービス「aterune」（以下「本サービス」）の利用条件を定めるものです。本サービスを利用するすべての方（以下「利用者」）は、本規約に同意したうえで本サービスを利用するものとします。';
 
-export const TERMS_SECTIONS: TermsSection[] = [
+export const TERMS_SECTIONS: LegalDocumentSection[] = [
   {
     heading: '第1条（本サービスの内容）',
     paragraphs: [
