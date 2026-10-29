@@ -2,10 +2,11 @@
 import TabsLayout from '@/app/(app)/(tabs)/_layout';
 import AppLayout from '@/app/(app)/_layout';
 import AuthLayout from '@/app/(auth)/_layout';
+import TermsScreen from '@/app/terms';
 import { useAuth } from '@/hooks/use-auth';
 import { useReplaceAfterDismiss } from '@/hooks/use-replace-after-dismiss';
 import { RootNavigator } from '@/navigation/root-navigator';
-import { router as expoRouter, type Href } from 'expo-router';
+import { router as expoRouter } from 'expo-router';
 import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 import { useSyncExternalStore } from 'react';
 import { Pressable, Text, TextInput } from 'react-native';
@@ -13,6 +14,11 @@ import { Pressable, Text, TextInput } from 'react-native';
 jest.mock('@/hooks/use-auth', () => ({ useAuth: jest.fn() }));
 // タブのヘッダーのベルは未読の件数を Supabase から読むため、何も描かないものに差し替える（このテストの対象外）
 jest.mock('@/components/notification-bell', () => ({ NotificationBell: () => null }));
+// 利用規約は、ルートファイル（@/app/terms）の置き場所だけを確かめるため、画面の中身を文言だけに差し替える
+jest.mock('@/screens/terms', () => {
+  const { Text: MockText } = jest.requireActual('react-native');
+  return { Terms: () => <MockText>利用規約の画面</MockText> };
+});
 
 const mockUseAuth = jest.mocked(useAuth);
 
@@ -91,8 +97,7 @@ function renderApp(initialUrl: string) {
       '(auth)/forgot-password': () => <Text>パスワード再設定メールの送信画面</Text>,
       'auth/confirmed': ConfirmedScreen,
       'auth/reset-password': ResetPasswordScreen,
-      // 利用規約など、どちらのグループにも入らない画面の代わり
-      terms: () => <Text>利用規約の画面</Text>,
+      terms: TermsScreen,
     },
     { initialUrl }
   );
@@ -192,6 +197,22 @@ describe('/auth/reset-password', () => {
   });
 });
 
+// 利用規約は新規登録の前にも読めるよう、どちらのグループにも属さない場所に置いている
+describe('/terms', () => {
+  it.each([
+    ['ログイン済み', true],
+    ['未ログイン', false],
+  ])('%sでもリダイレクトせずに表示する', async (_label, signedIn) => {
+    setSignedIn(signedIn);
+
+    const router = renderApp('/terms');
+    await router;
+
+    expect(router.getPathname()).toBe('/terms');
+    expect(screen.getByText('利用規約の画面')).toBeOnTheScreen();
+  });
+});
+
 // ルートを Stack にして、どちらのグループにも入らない画面を元の画面の上に重ねる
 describe('ルートのナビゲーター', () => {
   it('マイページからどちらのグループにも入らない画面を開いて戻ると、マイページに戻る', async () => {
@@ -199,8 +220,7 @@ describe('ルートのナビゲーター', () => {
 
     const router = renderApp('/mypage');
     await router;
-    // /terms はまだ無いルートで、typed routes の型に無いため Href として渡す
-    await act(async () => expoRouter.push('/terms' as Href));
+    await act(async () => expoRouter.push('/terms'));
     await act(async () => expoRouter.back());
 
     expect(router.getPathname()).toBe('/mypage');
@@ -213,8 +233,7 @@ describe('ルートのナビゲーター', () => {
     const router = renderApp('/signup');
     await router;
     await fireEvent.changeText(screen.getByPlaceholderText('ニックネーム'), 'みらい');
-    // /terms はまだ無いルートで、typed routes の型に無いため Href として渡す
-    await act(async () => expoRouter.push('/terms' as Href));
+    await act(async () => expoRouter.push('/terms'));
     await act(async () => expoRouter.back());
 
     expect(router.getPathname()).toBe('/signup');

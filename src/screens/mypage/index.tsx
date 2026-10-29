@@ -158,12 +158,18 @@ export function MyPage() {
           </Button>
         </VStack>
 
-        {/* 押し間違えないよう、ボタンではなく目立たないリンクにし、ログアウトから離して下端に置く */}
-        <Link className="mt-auto self-center pt-12" onPress={() => router.push('/account/delete')}>
-          <LinkText size="sm" className="text-muted-foreground">
-            退会する
-          </LinkText>
-        </Link>
+        <VStack className="mt-auto items-center pt-12" space="lg">
+          <Link onPress={() => router.push('/terms')}>
+            <LinkText size="sm">利用規約</LinkText>
+          </Link>
+
+          {/* 押し間違えないよう、ボタンではなく目立たないリンクにし、ログアウトから離して下端に置く */}
+          <Link onPress={() => router.push('/account/delete')}>
+            <LinkText size="sm" className="text-muted-foreground">
+              退会する
+            </LinkText>
+          </Link>
+        </VStack>
       </VStack>
     </ScrollView>
   );
