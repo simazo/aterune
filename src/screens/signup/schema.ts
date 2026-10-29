@@ -13,6 +13,8 @@ export const signupSchema = z.object({
     .min(1, 'メールアドレスを入力してください')
     .email('メールアドレスの形式が正しくありません'),
   password: z.string().min(6, 'パスワードは6文字以上で入力してください'),
+  // 同意したかどうかは DB に記録しない（同意の日時・規約の版の記録は #44 の範囲外）
+  agreedToTerms: z.boolean().refine((agreed) => agreed, '利用規約への同意が必要です'),
 });
 
 export type SignupFormValues = z.infer<typeof signupSchema>;

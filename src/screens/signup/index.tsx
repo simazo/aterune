@@ -1,7 +1,12 @@
 import { signUpWithEmail } from '@/api/auth';
+import { FilledCheckboxIndicator } from '@/components/filled-checkbox-indicator';
 import { FormTextField } from '@/components/form-text-field';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
+import { Checkbox, CheckboxIcon, CheckboxLabel } from '@/components/ui/checkbox';
+import { FormControl, FormControlError, FormControlErrorText } from '@/components/ui/form-control';
 import { Heading } from '@/components/ui/heading';
+import { HStack } from '@/components/ui/hstack';
+import { CheckIcon } from '@/components/ui/icon';
 import { Link, LinkText } from '@/components/ui/link';
 import { Text } from '@/components/ui/text';
 import { VStack } from '@/components/ui/vstack';
@@ -10,7 +15,7 @@ import { getAuthErrorMessage } from '@/utils/auth-error';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { signupSchema, type SignupFormValues } from './schema';
 
 export function Signup() {
@@ -20,7 +25,7 @@ export function Signup() {
   const [signUpEmailSent, setSignUpEmailSent] = useState(false);
   const { control, handleSubmit } = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { displayName: '', email: '', password: '' },
+    defaultValues: { displayName: '', email: '', password: '', agreedToTerms: false },
   });
 
   async function onSubmit({ displayName, email, password }: SignupFormValues) {
@@ -68,6 +73,31 @@ export function Signup() {
       />
 
       <FormTextField control={control} name="password" placeholder="パスワード" secureTextEntry />
+
+      <Controller
+        control={control}
+        name="agreedToTerms"
+        render={({ field: { value, onChange }, fieldState: { error } }) => (
+          <FormControl isInvalid={!!error}>
+            {/* ラベルを押すとチェックが切り替わるため、規約を開くリンクはラベルの外に置く */}
+            <HStack className="items-center justify-between" space="sm">
+              <Checkbox value="agreedToTerms" isChecked={value} onChange={onChange} isInvalid={!!error}>
+                <FilledCheckboxIndicator>
+                  <CheckboxIcon as={CheckIcon} />
+                </FilledCheckboxIndicator>
+                <CheckboxLabel>利用規約に同意する</CheckboxLabel>
+              </Checkbox>
+              {/* 入力した内容が残るよう、規約は新規登録の上に重ねて開く */}
+              <Link onPress={() => router.push('/terms')}>
+                <LinkText size="sm">利用規約を読む</LinkText>
+              </Link>
+            </HStack>
+            <FormControlError>
+              <FormControlErrorText>{error?.message}</FormControlErrorText>
+            </FormControlError>
+          </FormControl>
+        )}
+      />
 
       <Button onPress={handleSubmit(onSubmit)} isDisabled={isSigningUp} className="mt-2">
         {isSigningUp ? <ButtonSpinner /> : <ButtonText>新規登録</ButtonText>}

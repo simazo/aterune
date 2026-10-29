@@ -4,6 +4,7 @@ const validValues = {
   displayName: 'テストユーザー',
   email: 'user@example.com',
   password: 'secret',
+  agreedToTerms: true,
 };
 
 function firstErrorMessage(values: unknown) {
@@ -66,5 +67,11 @@ describe('signupSchema', () => {
 
   it('パスワードが6文字なら通る', () => {
     expect(signupSchema.safeParse({ ...validValues, password: '123456' }).success).toBe(true);
+  });
+
+  it('利用規約に同意していなければエラー', () => {
+    expect(firstErrorMessage({ ...validValues, agreedToTerms: false })).toBe(
+      '利用規約への同意が必要です'
+    );
   });
 });
