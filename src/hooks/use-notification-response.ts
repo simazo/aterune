@@ -1,6 +1,6 @@
 import { logger } from '@/lib/logger';
 import * as Notifications from 'expo-notifications';
-import { router } from 'expo-router';
+import { router, useSegments } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 
@@ -10,6 +10,12 @@ import { Platform } from 'react-native';
 export function useNotificationResponse(userId: string | undefined) {
   // 起動のきっかけのタップは、記録の読み取りとリスナーの両方から届くことがあるため、処理した通知を覚えておく
   const handledIdRef = useRef<string | null>(null);
+  // タップされた時点で開いている画面のグループ。リスナーは userId が変わるまで登録し直さないため、ref で最新を読む
+  const segments = useSegments();
+  const topSegmentRef = useRef(segments[0]);
+  useEffect(() => {
+    topSegmentRef.current = segments[0];
+  }, [segments]);
 
   useEffect(() => {
     // Web 版はプッシュ通知を受け取らない（push token を登録していない）
@@ -35,6 +41,12 @@ export function useNotificationResponse(userId: string | undefined) {
       // 前にログインしていた別のアカウント宛ての通知は開かない
       if (data?.recipient_id !== userId) return;
 
+      // どちらのグループにも入らない画面（利用規約など）は、ルートの Stack で (app) の上に重なっている。
+      // そのまま push すると、その上に (app) がもう一つ積まれるため、先に閉じて下の (app) に戻ってから開く。
+      // (app) の中の画面（占い師詳細など）を開いているときは、今までどおりその上に重ねる
+      if (topSegmentRef.current !== '(app)' && router.canDismiss()) {
+        router.dismissAll();
+      }
       router.push({ pathname: '/sessions/[id]', params: { id: sessionId } });
     }
 

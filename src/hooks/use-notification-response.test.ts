@@ -11,7 +11,11 @@ jest.mock('expo-notifications', () => ({
   addNotificationResponseReceivedListener: jest.fn(),
 }));
 
-jest.mock('expo-router', () => ({ router: { push: jest.fn() } }));
+// 開いている画面の違いによる動き（ルートの Stack を閉じるか）は src/__tests__/layouts.test.tsx で確かめるため、ここでは (app) の中にいることにする
+jest.mock('expo-router', () => ({
+  router: { push: jest.fn(), canDismiss: jest.fn(), dismissAll: jest.fn() },
+  useSegments: () => ['(app)'],
+}));
 
 const mockNotifications = jest.mocked(Notifications);
 const mockPush = jest.mocked(router.push);

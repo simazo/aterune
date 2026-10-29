@@ -6,6 +6,7 @@ import TermsScreen from '@/app/terms';
 import { useAuth } from '@/hooks/use-auth';
 import { useReplaceAfterDismiss } from '@/hooks/use-replace-after-dismiss';
 import { RootNavigator } from '@/navigation/root-navigator';
+import * as Notifications from 'expo-notifications';
 import { router as expoRouter } from 'expo-router';
 import { act, fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 import { useSyncExternalStore } from 'react';
@@ -19,8 +20,31 @@ jest.mock('@/screens/terms', () => {
   const { Text: MockText } = jest.requireActual('react-native');
   return { Terms: () => <MockText>利用規約の画面</MockText> };
 });
+// (app) のレイアウトが通知のタップを受け取るため、タップを再現できるようにする
+jest.mock('expo-notifications', () => ({
+  DEFAULT_ACTION_IDENTIFIER: 'expo.modules.notifications.actions.DEFAULT',
+  getLastNotificationResponseAsync: jest.fn().mockResolvedValue(null),
+  clearLastNotificationResponseAsync: jest.fn().mockResolvedValue(undefined),
+  addNotificationResponseReceivedListener: jest.fn().mockReturnValue({ remove: jest.fn() }),
+}));
 
 const mockUseAuth = jest.mocked(useAuth);
+const mockAddResponseListener = jest.mocked(Notifications.addNotificationResponseReceivedListener);
+
+// 最後に登録されたリスナーを呼んで、ログイン中のユーザー宛ての通知のタップを再現する
+function tapNotification(sessionId: string) {
+  const calls = mockAddResponseListener.mock.calls;
+  const listener = calls[calls.length - 1][0];
+  listener({
+    actionIdentifier: Notifications.DEFAULT_ACTION_IDENTIFIER,
+    notification: {
+      request: {
+        identifier: `notification-${sessionId}`,
+        content: { data: { session_id: sessionId, recipient_id: 'user-1' } },
+      },
+    },
+  } as unknown as Notifications.NotificationResponse);
+}
 
 // 描画したあとにログイン・ログアウトさせるテストがあるため、ログイン状態を変えたら useAuth を使う画面が描画し直されるようにする
 let isSignedIn = false;
@@ -91,6 +115,8 @@ function renderApp(initialUrl: string) {
       '(app)/(tabs)/concerns': () => <Text>お悩み一覧画面</Text>,
       '(app)/(tabs)/messages': () => <Text>メッセージ画面</Text>,
       '(app)/(tabs)/mypage': () => <Text>マイページ画面</Text>,
+      '(app)/favorites': () => <Text>お気に入りの占い師の画面</Text>,
+      '(app)/sessions/[id]/index': () => <Text>セッション詳細の画面</Text>,
       '(auth)/_layout': AuthLayout,
       '(auth)/login': () => <Text>ログイン</Text>,
       '(auth)/signup': () => <TextInput placeholder="ニックネーム" />,
@@ -260,6 +286,45 @@ describe('ルートのナビゲーター', () => {
 
     expect(router.getPathname()).toBe('/login');
     expect(expoRouter.canGoBack()).toBe(false);
+  });
+});
+
+// 通知のタップでセッション詳細を開く。どちらのグループにも入らない画面の上に (app) が二重に積まれないようにする
+describe('通知のタップ', () => {
+  it.each(['/terms', '/auth/confirmed', '/auth/reset-password'] as const)(
+    'どちらのグループにも入らない画面（%s）を開いているなら、その画面を閉じてから開き、戻ると元の画面に戻る',
+    async (pathname) => {
+      setSignedIn(true);
+
+      const router = renderApp('/mypage');
+      await router;
+      await act(async () => expoRouter.push(pathname));
+      await act(async () => tapNotification('session-1'));
+
+      expect(router.getPathname()).toBe('/sessions/session-1');
+      expect(screen.getByText('セッション詳細の画面')).toBeOnTheScreen();
+
+      await act(async () => expoRouter.back());
+
+      expect(router.getPathname()).toBe('/mypage');
+      expect(screen.getByText('マイページ画面')).toBeOnTheScreen();
+    }
+  );
+
+  it('(app) の中の画面を開いているなら、その上に重ね、戻るとその画面に戻る', async () => {
+    setSignedIn(true);
+
+    const router = renderApp('/mypage');
+    await router;
+    await act(async () => expoRouter.push('/favorites'));
+    await act(async () => tapNotification('session-1'));
+
+    expect(router.getPathname()).toBe('/sessions/session-1');
+
+    await act(async () => expoRouter.back());
+
+    expect(router.getPathname()).toBe('/favorites');
+    expect(screen.getByText('お気に入りの占い師の画面')).toBeOnTheScreen();
   });
 });
 
