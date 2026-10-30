@@ -1,5 +1,5 @@
 begin;
-select plan(26);
+select plan(29);
 
 -- ===== テストデータ(postgres 権限)=====
 -- seed に依存しないよう、タグ・占い師はすべてここで作る。結果はテストの占い師(d1〜d4)に絞って確かめる
@@ -351,6 +351,60 @@ select set_eq(
   '退会したユーザーは検索結果に出ない'
 );
 reset role;
+
+-- ===== ブロック(d5=一般ユーザーがログイン中。この時点の結果は d2・d3・d4)=====
+-- 27. ブロックした占い師は出ない
+insert into public.blocks (blocker_id, blocked_id) values
+  ('00000000-0000-0000-0000-0000000000d5', '00000000-0000-0000-0000-0000000000d2');
+
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000d5","role":"authenticated"}', true);
+select set_eq(
+  $$ select teller_id from public.search_tellers() where teller_id in (select id from test_tellers) $$,
+  array[
+    '00000000-0000-0000-0000-0000000000d3',
+    '00000000-0000-0000-0000-0000000000d4'
+  ]::uuid[],
+  'ブロックした占い師は検索結果に出ない'
+);
+reset role;
+
+-- 28. 自分をブロックした占い師も出ない(逆の向き)
+delete from public.blocks where blocker_id = '00000000-0000-0000-0000-0000000000d5';
+insert into public.blocks (blocker_id, blocked_id) values
+  ('00000000-0000-0000-0000-0000000000d2', '00000000-0000-0000-0000-0000000000d5');
+
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000d5","role":"authenticated"}', true);
+select set_eq(
+  $$ select teller_id from public.search_tellers() where teller_id in (select id from test_tellers) $$,
+  array[
+    '00000000-0000-0000-0000-0000000000d3',
+    '00000000-0000-0000-0000-0000000000d4'
+  ]::uuid[],
+  '自分をブロックした占い師は検索結果に出ない'
+);
+reset role;
+
+-- 29. 解除すると、元どおり出る
+delete from public.blocks where blocker_id = '00000000-0000-0000-0000-0000000000d2';
+
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000d5","role":"authenticated"}', true);
+select set_eq(
+  $$ select teller_id from public.search_tellers() where teller_id in (select id from test_tellers) $$,
+  array[
+    '00000000-0000-0000-0000-0000000000d2',
+    '00000000-0000-0000-0000-0000000000d3',
+    '00000000-0000-0000-0000-0000000000d4'
+  ]::uuid[],
+  'ブロックを解除すると、検索結果に出る'
+);
+reset role;
+select set_config('request.jwt.claims', '', true);
 
 select * from finish();
 rollback;

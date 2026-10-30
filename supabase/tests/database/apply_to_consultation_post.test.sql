@@ -1,5 +1,5 @@
 begin;
-select plan(18);
+select plan(21);
 
 -- ===== テストデータ(postgres 権限) =====
 -- alice=投稿者(占い師でもある)/ bob,dave,erin=占い師 / carol=占い師ではない
@@ -226,6 +226,55 @@ select throws_ok(
   $$ select public.apply_to_consultation_post('00000000-0000-0000-0000-0000000000d5') $$,
   'P0001', 'the recipient has deleted the account',
   '退会したユーザーの投稿には応募できない'
+);
+reset role;
+
+-- ===== ブロック(gina=占い師、p6=alice の募集中の投稿)=====
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-0000000000c7', 'gina@example.com');
+insert into public.teller_profiles (profile_id) values
+  ('00000000-0000-0000-0000-0000000000c7');
+insert into public.consultation_posts (id, consultant_id, concern_tag_id, concern, status) values
+  ('00000000-0000-0000-0000-0000000000d6', '00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000e1', 'p6の悩み', 'open');
+
+-- 19. 占い師が投稿者をブロックしていると、応募できない
+insert into public.blocks (blocker_id, blocked_id) values
+  ('00000000-0000-0000-0000-0000000000c7', '00000000-0000-0000-0000-0000000000c1');
+
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c7","role":"authenticated"}', true);
+select throws_ok(
+  $$ select public.apply_to_consultation_post('00000000-0000-0000-0000-0000000000d6') $$,
+  'P0001', 'cannot send a request to this user',
+  'ブロックした相手の投稿には応募できない'
+);
+reset role;
+
+-- 20. 投稿者が占い師をブロックしていても(逆の向き)、応募できない
+delete from public.blocks where blocker_id = '00000000-0000-0000-0000-0000000000c7';
+insert into public.blocks (blocker_id, blocked_id) values
+  ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000c7');
+
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c7","role":"authenticated"}', true);
+select throws_ok(
+  $$ select public.apply_to_consultation_post('00000000-0000-0000-0000-0000000000d6') $$,
+  'P0001', 'cannot send a request to this user',
+  'ブロックされた相手の投稿には応募できない'
+);
+reset role;
+
+-- 21. 解除すると、元どおり応募できる
+delete from public.blocks where blocker_id = '00000000-0000-0000-0000-0000000000c1';
+
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c7","role":"authenticated"}', true);
+select lives_ok(
+  $$ select public.apply_to_consultation_post('00000000-0000-0000-0000-0000000000d6') $$,
+  'ブロックを解除すると応募できる'
 );
 reset role;
 

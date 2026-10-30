@@ -1,5 +1,5 @@
 begin;
-select plan(77);
+select plan(83);
 
 -- ===== テストデータ(postgres 権限) =====
 -- alice=占い師でもある相談者 / bob=占い師 / carol=占い師ではない一般ユーザー / dave=占い師(完了数・制約用)
@@ -819,6 +819,90 @@ select throws_ok(
   '退会したユーザーは申し込めない'
 );
 reset role;
+select set_config('request.jwt.claims', '', true);
+
+-- ===== ブロック(liam=相談者、mia=占い師)=====
+insert into auth.users (id, email) values
+  ('00000000-0000-0000-0000-0000000000a1', 'liam@example.com'),
+  ('00000000-0000-0000-0000-0000000000a2', 'mia@example.com');
+insert into public.teller_profiles (profile_id) values
+  ('00000000-0000-0000-0000-0000000000a2');
+
+-- 78. 相談者が占い師をブロックしていると、相談者から申し込めない
+insert into public.blocks (blocker_id, blocked_id) values
+  ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000a2');
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000a1","role":"authenticated"}', true);
+select throws_ok(
+  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern)
+     values ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000a2',
+             '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000a2', 'consultant', 'mia への申込み') $$,
+  'P0001', 'cannot send a request to this user',
+  'ブロックした相手には申し込めない'
+);
+reset role;
+
+-- 79. 占い師が相談者をブロックしていても(逆の向き)、相談者から申し込めない
+delete from public.blocks where blocker_id = '00000000-0000-0000-0000-0000000000a1';
+insert into public.blocks (blocker_id, blocked_id) values
+  ('00000000-0000-0000-0000-0000000000a2', '00000000-0000-0000-0000-0000000000a1');
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000a1","role":"authenticated"}', true);
+select throws_ok(
+  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern)
+     values ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000a2',
+             '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000a2', 'consultant', 'mia への申込み') $$,
+  'P0001', 'cannot send a request to this user',
+  'ブロックされた相手には申し込めない'
+);
+reset role;
+
+-- 80. 解除すると、元どおり申し込める
+delete from public.blocks where blocker_id = '00000000-0000-0000-0000-0000000000a2';
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000a1","role":"authenticated"}', true);
+select lives_ok(
+  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern)
+     values ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000a2',
+             '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000a2', 'consultant', 'mia への申込み') $$,
+  'ブロックを解除すると申し込める'
+);
+reset role;
+
+-- 81-82. ブロックする前からの承認待ち・進行中のセッションは、ブロックしたあとも続く
+insert into public.blocks (blocker_id, blocked_id) values
+  ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000a2');
+
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000a2","role":"authenticated"}', true);
+select lives_ok(
+  $$ update public.sessions set status = 'active' where consultant_id = '00000000-0000-0000-0000-0000000000a1' $$,
+  'ブロックしたあとも、承認待ちのセッションは承認できる'
+);
+
+-- 承認(81)と完了が 0 行の更新で終わっていないことも、完了後の status で確かめる
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000000a1","role":"authenticated"}', true);
+update public.sessions set status = 'completed' where consultant_id = '00000000-0000-0000-0000-0000000000a1';
+reset role;
+
+select is(
+  (select status from public.sessions where consultant_id = '00000000-0000-0000-0000-0000000000a1'),
+  'completed',
+  'ブロックしたあとも、進行中のセッションは完了できる'
+);
+
+-- 83. システム(auth.uid() が null)の登録は、ブロックがあっても確かめない
+--     (has_block_with はログイン中のユーザーを基準にするため。この時点で liam は mia をブロックしている)
+select set_config('request.jwt.claims', '', true);
+select lives_ok(
+  $$ insert into public.sessions (applicant_id, recipient_id, consultant_id, teller_id, initiated_by, concern)
+     values ('00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000a2',
+             '00000000-0000-0000-0000-0000000000a1', '00000000-0000-0000-0000-0000000000a2', 'consultant', 'システムからの登録') $$,
+  'システムからの登録は、ブロックがあっても弾かない'
+);
 select set_config('request.jwt.claims', '', true);
 
 select * from finish();

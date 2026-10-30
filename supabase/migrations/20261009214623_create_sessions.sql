@@ -117,6 +117,10 @@ $$;
 -- 申込みのルール:
 --   ・申込みの向きに関わらず、退会したユーザー(profiles.deleted_at あり)には申し込めない。
 --     退会したユーザーも申し込めない(auth の論理削除のあとも、発行済みのアクセストークンは期限まで使えるため)
+--   ・申込みの向きに関わらず、2人の間にどちらかの向きのブロック(blocks)があれば申し込めない。
+--     どちらの向きかはエラーの文に出さない(ブロックされたことを相手に知らせないため)。
+--     has_block_with はログイン中のユーザーを基準にするので、申し込む本人の登録だけを確かめる
+--     (システム(auth.uid() が null)の登録は確かめない)
 --   ・相談者からの申込みは、受付停止中の占い師にはできない
 --   ・相談者からの申込みは、生年月日必須の占い師には、生年月日を登録済みの相談者だけができる
 --   ・申込みの向きに関わらず、同じ相談者と占い師の間に、期限内の pending か active があれば作れない
@@ -151,6 +155,10 @@ begin
        and deleted_at is not null
   ) then
     raise exception 'the recipient has deleted the account';
+  end if;
+
+  if new.applicant_id = (select auth.uid()) and public.has_block_with(new.recipient_id) then
+    raise exception 'cannot send a request to this user';
   end if;
 
   if new.initiated_by = 'consultant' then

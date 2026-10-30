@@ -1,5 +1,5 @@
 begin;
-select plan(18);
+select plan(23);
 
 -- ===== テストデータ(postgres 権限) =====
 -- alice=投稿者(相談者)/ bob=占い師で投稿者でもある
@@ -142,6 +142,57 @@ select throws_ok(
   $$ select public.close_consultation_post(gen_random_uuid()) $$,
   'P0001', 'only the owner can close the post',
   '存在しない投稿は閉じられない'
+);
+reset role;
+
+-- ===== ブロック(この時点の一覧は bob の p3 と alice の p4)=====
+-- 19-20. bob が alice をブロックすると、bob には alice の投稿が一覧にも詳細にも出ない(自分の投稿は出る)
+insert into public.blocks (blocker_id, blocked_id) values
+  ('00000000-0000-0000-0000-0000000000c2', '00000000-0000-0000-0000-0000000000c1');
+
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c2","role":"authenticated"}', true);
+select is(
+  (select array_agg(id) from public.list_consultation_posts()),
+  array['00000000-0000-0000-0000-0000000000d3']::uuid[],
+  'ブロックした相手の投稿は一覧に出ない'
+);
+select is_empty(
+  $$ select * from public.get_consultation_post('00000000-0000-0000-0000-0000000000d4') $$,
+  'ブロックした相手の投稿は詳細も取れない'
+);
+reset role;
+
+-- 21-22. alice が bob をブロックしても(逆の向き)、bob には alice の投稿が出ない
+delete from public.blocks where blocker_id = '00000000-0000-0000-0000-0000000000c2';
+insert into public.blocks (blocker_id, blocked_id) values
+  ('00000000-0000-0000-0000-0000000000c1', '00000000-0000-0000-0000-0000000000c2');
+
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c2","role":"authenticated"}', true);
+select is(
+  (select array_agg(id) from public.list_consultation_posts()),
+  array['00000000-0000-0000-0000-0000000000d3']::uuid[],
+  'ブロックされた相手の投稿は一覧に出ない'
+);
+select is_empty(
+  $$ select * from public.get_consultation_post('00000000-0000-0000-0000-0000000000d4') $$,
+  'ブロックされた相手の投稿は詳細も取れない'
+);
+reset role;
+
+-- 23. 解除すると、元どおり出る
+delete from public.blocks where blocker_id = '00000000-0000-0000-0000-0000000000c1';
+
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c2","role":"authenticated"}', true);
+select is(
+  (select array_agg(id) from public.list_consultation_posts()),
+  array['00000000-0000-0000-0000-0000000000d3', '00000000-0000-0000-0000-0000000000d4']::uuid[],
+  'ブロックを解除すると、相手の投稿が一覧に出る'
 );
 reset role;
 

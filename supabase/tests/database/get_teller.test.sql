@@ -1,5 +1,5 @@
 begin;
-select plan(10);
+select plan(13);
 
 -- ===== テストデータ(postgres 権限)=====
 -- seed に依存しないよう、タグ・占い師はすべてここで作る
@@ -127,6 +127,48 @@ select is_empty(
   '退会したユーザーの ID なら 0 行'
 );
 reset role;
+
+-- ===== ブロック(e3=一般ユーザーがログイン中、e2=占い師)=====
+-- 11. ブロックした占い師は返さない
+insert into public.blocks (blocker_id, blocked_id) values
+  ('00000000-0000-0000-0000-0000000000e3', '00000000-0000-0000-0000-0000000000e2');
+
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000e3","role":"authenticated"}', true);
+select is_empty(
+  $$ select * from public.get_teller('00000000-0000-0000-0000-0000000000e2') $$,
+  'ブロックした占い師の ID なら 0 行'
+);
+reset role;
+
+-- 12. 自分をブロックした占い師も返さない(逆の向き)
+delete from public.blocks where blocker_id = '00000000-0000-0000-0000-0000000000e3';
+insert into public.blocks (blocker_id, blocked_id) values
+  ('00000000-0000-0000-0000-0000000000e2', '00000000-0000-0000-0000-0000000000e3');
+
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000e3","role":"authenticated"}', true);
+select is_empty(
+  $$ select * from public.get_teller('00000000-0000-0000-0000-0000000000e2') $$,
+  '自分をブロックした占い師の ID なら 0 行'
+);
+reset role;
+
+-- 13. 解除すると、元どおり返す
+delete from public.blocks where blocker_id = '00000000-0000-0000-0000-0000000000e2';
+
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000e3","role":"authenticated"}', true);
+select is(
+  (select teller_id from public.get_teller('00000000-0000-0000-0000-0000000000e2')),
+  '00000000-0000-0000-0000-0000000000e2'::uuid,
+  'ブロックを解除すると、占い師を返す'
+);
+reset role;
+select set_config('request.jwt.claims', '', true);
 
 select * from finish();
 rollback;

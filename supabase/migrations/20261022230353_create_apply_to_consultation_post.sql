@@ -7,7 +7,8 @@
 -- 匿名なのはお悩み一覧・投稿の詳細まで。応募した占い師は、作られたセッションから投稿者が分かる
 -- (応募すると相手とのやり取りが始まるため。2026-10-23 に決定)。
 -- 次のルールは sessions の制約・トリガーが守る:
---   閉じた投稿には応募できない(check_session_post)、同じ相談者と占い師の間の二重の申込み(check_session_request)、
+--   閉じた投稿には応募できない(check_session_post)、同じ相談者と占い師の間の二重の申込みと、
+--   どちらかの向きのブロックがある相手への応募(check_session_request)、
 --   同じ投稿へは1回だけ(sessions_post_id_teller_id_key)、ひとことは100文字まで、
 --   悩みタグ・本文のコピー(copy_post_content_to_session)、投稿者への通知(notify_session_request_received)。
 -- 作ったセッションの ID を返す。

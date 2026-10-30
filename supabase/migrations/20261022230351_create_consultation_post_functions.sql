@@ -4,6 +4,7 @@
 -- 投稿者を匿名にするため、利用者には consultation_posts を直接読ませず、consultant_id を除いた列をこの関数で返す。
 -- consultant_id(自分の投稿か)と sessions(他人との応募も含む)を読むため security definer を付け、
 -- 呼び出し元は auth.uid() で絞る。
+-- お悩み一覧・投稿の詳細には、ログイン中のユーザーとの間にどちらかの向きのブロックがある相手の投稿を出さない(has_block_with)。
 
 -- お悩み一覧: 募集中・対応中の投稿を新着順に返す(閉じた投稿は本人のものも返さない)。
 --   is_mine     : ログイン中のユーザー自身の投稿か(応募ボタンを出さないため)
@@ -40,6 +41,7 @@ as $$
   from public.consultation_posts cp
   join public.tags t on t.id = cp.concern_tag_id
   where cp.status in ('open', 'in_progress')
+    and not public.has_block_with(cp.consultant_id)
   order by cp.created_at desc, cp.id;
 $$;
 
@@ -47,7 +49,7 @@ comment on function public.list_consultation_posts() is
   'お悩み一覧。募集中・対応中の投稿を新着順に返す。投稿者を匿名にするため consultant_id は返さない';
 
 -- お悩み投稿1件(投稿の詳細画面用)。列は list_consultation_posts と同じ。
--- 閉じた投稿は本人にだけ返す。見られない・存在しない ID なら 0 行
+-- 閉じた投稿は本人にだけ返す。見られない・ブロックのある相手の・存在しない ID なら 0 行
 create function public.get_consultation_post(p_post_id uuid)
 returns table (
   id               uuid,
@@ -80,7 +82,8 @@ as $$
   from public.consultation_posts cp
   join public.tags t on t.id = cp.concern_tag_id
   where cp.id = p_post_id
-    and (cp.status <> 'closed' or cp.consultant_id = (select auth.uid()));
+    and (cp.status <> 'closed' or cp.consultant_id = (select auth.uid()))
+    and not public.has_block_with(cp.consultant_id);
 $$;
 
 comment on function public.get_consultation_post(uuid) is

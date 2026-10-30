@@ -34,6 +34,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
       consultation_posts: {
         Row: {
           concern: string
@@ -520,6 +538,16 @@ export type Database = {
           tags: Json
           teller_id: string
           training_period: string
+        }[]
+      }
+      has_block_with: { Args: { p_user_id: string }; Returns: boolean }
+      list_blocked_users: {
+        Args: never
+        Returns: {
+          avatar_path: string
+          blocked_id: string
+          created_at: string
+          display_name: string
         }[]
       }
       list_consultation_posts: {
