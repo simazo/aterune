@@ -272,6 +272,44 @@ export type Database = {
         }
         Relationships: []
       }
+      reports: {
+        Row: {
+          created_at: string
+          detail: string | null
+          id: string
+          reason: Database["public"]["Enums"]["report_reason"]
+          reported_user_id: string
+          reporter_id: string
+          session_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          reason: Database["public"]["Enums"]["report_reason"]
+          reported_user_id: string
+          reporter_id: string
+          session_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          detail?: string | null
+          id?: string
+          reason?: Database["public"]["Enums"]["report_reason"]
+          reported_user_id?: string
+          reporter_id?: string
+          session_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reviews: {
         Row: {
           comment: string | null
@@ -658,6 +696,13 @@ export type Database = {
       }
     }
     Enums: {
+      report_reason:
+        | "inappropriate_content"
+        | "harassment"
+        | "spam"
+        | "external_solicitation"
+        | "impersonation"
+        | "other"
       tag_category: "divination" | "concern" | "style"
       teller_sort_order: "newest" | "rating" | "sessions"
     }
@@ -790,6 +835,14 @@ export const Constants = {
   },
   public: {
     Enums: {
+      report_reason: [
+        "inappropriate_content",
+        "harassment",
+        "spam",
+        "external_solicitation",
+        "impersonation",
+        "other",
+      ],
       tag_category: ["divination", "concern", "style"],
       teller_sort_order: ["newest", "rating", "sessions"],
     },
