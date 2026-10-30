@@ -162,6 +162,9 @@ export function MyPage() {
         </VStack>
 
         <VStack className="mt-auto items-center pt-12" space="lg">
+          <Link onPress={() => router.push('/help')}>
+            <LinkText size="sm">よくある質問・お問い合わせ</LinkText>
+          </Link>
           <Link onPress={() => router.push('/terms')}>
             <LinkText size="sm">利用規約</LinkText>
           </Link>

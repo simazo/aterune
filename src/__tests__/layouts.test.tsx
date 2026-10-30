@@ -2,6 +2,7 @@
 import TabsLayout from '@/app/(app)/(tabs)/_layout';
 import AppLayout from '@/app/(app)/_layout';
 import AuthLayout from '@/app/(auth)/_layout';
+import HelpScreen from '@/app/help';
 import PrivacyScreen from '@/app/privacy';
 import TermsScreen from '@/app/terms';
 import { useAuth } from '@/hooks/use-auth';
@@ -16,7 +17,7 @@ import { Pressable, Text, TextInput } from 'react-native';
 jest.mock('@/hooks/use-auth', () => ({ useAuth: jest.fn() }));
 // タブのヘッダーのベルは未読の件数を Supabase から読むため、何も描かないものに差し替える（このテストの対象外）
 jest.mock('@/components/notification-bell', () => ({ NotificationBell: () => null }));
-// 利用規約・プライバシーポリシーは、ルートファイル（@/app/terms など）の置き場所だけを確かめるため、画面の中身を文言だけに差し替える
+// 利用規約・プライバシーポリシー・よくある質問は、ルートファイル（@/app/terms など）の置き場所だけを確かめるため、画面の中身を文言だけに差し替える
 jest.mock('@/screens/terms', () => {
   const { Text: MockText } = jest.requireActual('react-native');
   return { Terms: () => <MockText>利用規約の画面</MockText> };
@@ -24,6 +25,10 @@ jest.mock('@/screens/terms', () => {
 jest.mock('@/screens/privacy', () => {
   const { Text: MockText } = jest.requireActual('react-native');
   return { Privacy: () => <MockText>プライバシーポリシーの画面</MockText> };
+});
+jest.mock('@/screens/help', () => {
+  const { Text: MockText } = jest.requireActual('react-native');
+  return { Help: () => <MockText>よくある質問の画面</MockText> };
 });
 // (app) のレイアウトが通知のタップを受け取るため、タップを再現できるようにする
 jest.mock('expo-notifications', () => ({
@@ -130,6 +135,7 @@ function renderApp(initialUrl: string) {
       'auth/reset-password': ResetPasswordScreen,
       terms: TermsScreen,
       privacy: PrivacyScreen,
+      help: HelpScreen,
     },
     { initialUrl }
   );
@@ -229,10 +235,11 @@ describe('/auth/reset-password', () => {
   });
 });
 
-// 利用規約・プライバシーポリシーは新規登録の前にも読めるよう、どちらのグループにも属さない場所に置いている
+// 利用規約・プライバシーポリシー・よくある質問は新規登録の前（ログインできないときなど）にも読めるよう、どちらのグループにも属さない場所に置いている
 describe.each([
   ['/terms', '利用規約の画面'],
   ['/privacy', 'プライバシーポリシーの画面'],
+  ['/help', 'よくある質問の画面'],
 ] as const)('%s', (pathname, screenText) => {
   it.each([
     ['ログイン済み', true],
@@ -300,7 +307,7 @@ describe('ルートのナビゲーター', () => {
 
 // 通知のタップでセッション詳細を開く。どちらのグループにも入らない画面の上に (app) が二重に積まれないようにする
 describe('通知のタップ', () => {
-  it.each(['/terms', '/privacy', '/auth/confirmed', '/auth/reset-password'] as const)(
+  it.each(['/terms', '/privacy', '/help', '/auth/confirmed', '/auth/reset-password'] as const)(
     'どちらのグループにも入らない画面（%s）を開いているなら、その画面を閉じてから開き、戻ると元の画面に戻る',
     async (pathname) => {
       setSignedIn(true);

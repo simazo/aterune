@@ -67,6 +67,12 @@ export function Login() {
           アカウントをお持ちでない方はこちら
         </LinkText>
       </Link>
+
+      <Link onPress={() => router.push('/help')}>
+        <LinkText className="mt-2 text-center" size="sm">
+          よくある質問・お問い合わせ
+        </LinkText>
+      </Link>
     </VStack>
   );
 }
