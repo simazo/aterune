@@ -162,6 +162,9 @@ export function MyPage() {
           <Link onPress={() => router.push('/terms')}>
             <LinkText size="sm">利用規約</LinkText>
           </Link>
+          <Link onPress={() => router.push('/privacy')}>
+            <LinkText size="sm">プライバシーポリシー</LinkText>
+          </Link>
 
           {/* 押し間違えないよう、ボタンではなく目立たないリンクにし、ログアウトから離して下端に置く */}
           <Link onPress={() => router.push('/account/delete')}>
