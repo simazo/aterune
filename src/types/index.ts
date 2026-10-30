@@ -10,11 +10,15 @@ export type Review = Tables<'reviews'>;
 export type Notification = Tables<'notifications'>;
 export type Favorite = Tables<'favorites'>;
 export type Block = Tables<'blocks'>;
+export type Report = Tables<'reports'>;
 export type Tag = Tables<'tags'>;
 export type PushToken = Tables<'push_tokens'>;
 
 // タグの種類（DB の enum tag_category）
 export type TagCategory = Enums<'tag_category'>;
+
+// 通報の理由（DB の enum report_reason）
+export type ReportReason = Enums<'report_reason'>;
 
 // profile_private_details.gender の CHECK 制約と合わせる（「回答しない」は null）
 export type Gender = 'female' | 'male' | 'other';
