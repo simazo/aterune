@@ -2,6 +2,7 @@ import { listTellerReviews } from '@/api/reviews';
 import { hasOpenSessionWithTeller } from '@/api/sessions';
 import { getTeller } from '@/api/tellers';
 import { BlockUserLink } from '@/components/block-user-link';
+import { ReportUserLink } from '@/components/report-user-link';
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -239,12 +240,17 @@ export function TellerDetail({ tellerId }: Props) {
           <ReviewList reviews={reviews} reviewCount={teller.review_count} />
 
           {!isOwnProfile && userId && (
-            <VStack className="mt-4">
+            <VStack space="md" className="mt-4">
               <BlockUserLink
                 userId={userId}
                 otherUserId={teller.teller_id}
                 otherUserName={teller.display_name}
                 onBlocked={handleBlocked}
+              />
+              <ReportUserLink
+                otherUserId={teller.teller_id}
+                otherUserName={teller.display_name}
+                sessionId={null}
               />
             </VStack>
           )}

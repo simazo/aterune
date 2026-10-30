@@ -6,6 +6,7 @@ import { getSessionReview } from '@/api/reviews';
 import { approveSession, completeSession, getSession, rejectSession } from '@/api/sessions';
 import { BlockUserLink } from '@/components/block-user-link';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { ReportUserLink } from '@/components/report-user-link';
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -385,22 +386,29 @@ export function SessionDetail({ sessionId }: Props) {
 
           {/* ブロックしても、このやり取りはそのまま続き、一覧にも残る。プロフィールが無い相手（アカウントの削除済み）にはリンクを出さない。
               退会の手続き中（プロフィールが「退会したユーザー」に書き換わり、まだ削除されていない間）はリンクが出るが、
-              ブロックしてもマイページの一覧に出ず解除できないだけで、行はアカウントの削除で連鎖して消えるため、そのままにする */}
-          {session.partner_name !== null &&
-            (isBlockingPartner ? (
-              <Text size="sm" className="mt-4 text-center text-muted-foreground">
-                この相手はブロック中です（解除はマイページから）
-              </Text>
-            ) : (
-              <VStack className="mt-4">
+              ブロックしてもマイページの一覧に出ず解除できないだけで、行はアカウントの削除で連鎖して消えるため、そのままにする。
+              通報はブロック中でもできる（ブロックしたあとに運営へ知らせたい場合のため） */}
+          {session.partner_name !== null && (
+            <VStack space="md" className="mt-4">
+              {isBlockingPartner ? (
+                <Text size="sm" className="text-center text-muted-foreground">
+                  この相手はブロック中です（解除はマイページから）
+                </Text>
+              ) : (
                 <BlockUserLink
                   userId={userId}
                   otherUserId={partnerId}
                   otherUserName={session.partner_name}
                   onBlocked={() => setIsBlockingPartner(true)}
                 />
-              </VStack>
-            ))}
+              )}
+              <ReportUserLink
+                otherUserId={partnerId}
+                otherUserName={session.partner_name}
+                sessionId={sessionId}
+              />
+            </VStack>
+          )}
         </VStack>
       </ScrollView>
 
