@@ -1,8 +1,10 @@
+import { isBlocking } from '@/api/blocks';
 import { listMessages } from '@/api/messages';
 import { markSessionNotificationsRead } from '@/api/notifications';
 import { getConsultantPrivateDetails } from '@/api/profile-private-details';
 import { getSessionReview } from '@/api/reviews';
 import { approveSession, completeSession, getSession, rejectSession } from '@/api/sessions';
+import { BlockUserLink } from '@/components/block-user-link';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Button, ButtonSpinner, ButtonText } from '@/components/ui/button';
@@ -54,7 +56,8 @@ type Props = {
 // 承認したら画面にとどまり、進行中の表示に切り替える。
 // 承認後はメッセージを並べ、進行中なら「メッセージを書く」（書く画面へ移る）と、相談者には完了のボタンを出す。
 // 相談者が完了したら（completed）、レビューを出し、まだ無ければ書ける相談者には「レビューを書く」を出す。
-// 相手のメッセージは、画面が表示されたときと、引っ張って更新したときに読み直す（リアルタイムでは受け取らない）
+// 相手のメッセージは、画面が表示されたときと、引っ張って更新したときに読み直す（リアルタイムでは受け取らない）。
+// 下端に相手をブロックするリンクを出し、ブロック済みなら代わりに「ブロック中」と出す
 export function SessionDetail({ sessionId }: Props) {
   const router = useRouter();
   const showError = useErrorToast();
@@ -67,6 +70,8 @@ export function SessionDetail({ sessionId }: Props) {
   const [messages, setMessages] = useState<SessionMessage[]>([]);
   // completed のときだけ読む。まだ無ければ null、読めなかった・completed でないなら undefined
   const [review, setReview] = useState<SessionReview | null | undefined>();
+  // 自分が相手をブロックしているか。確かめられなかったときは null（ブロックのリンクを出す。二度押しは成功扱い）
+  const [isBlockingPartner, setIsBlockingPartner] = useState<boolean | null>(null);
   // 期限の判定と残り時間は、読み込んだ時点の時刻で揃える
   const [loadedAt, setLoadedAt] = useState(() => new Date());
   const [isLoading, setIsLoading] = useState(true);
@@ -109,10 +114,12 @@ export function SessionDetail({ sessionId }: Props) {
       const shouldLoadMessages = MESSAGE_STATUSES.includes(data.status);
       // レビューは相談者が完了した completed にだけ付く（auto_completed には付かない）
       const shouldLoadReview = data.status === 'completed';
-      const [detailsResult, messagesResult, reviewResult] = await Promise.all([
+      const partnerId = data.applicant_id === userId ? data.recipient_id : data.applicant_id;
+      const [detailsResult, messagesResult, reviewResult, blockingResult] = await Promise.all([
         shouldLoadDetails ? getConsultantPrivateDetails(data.consultant_id) : null,
         shouldLoadMessages ? listMessages(sessionId) : null,
         shouldLoadReview ? getSessionReview(sessionId) : null,
+        isBlocking(userId, partnerId),
       ]);
       if (isCancelled()) return;
 
@@ -129,6 +136,10 @@ export function SessionDetail({ sessionId }: Props) {
       setConsultantDetails(details);
       // 取れなくても詳細は見られるようにする（レビューだけ「表示できません」にし、書くボタンも出さない）
       setReview(reviewResult && !reviewResult.error ? reviewResult.data : undefined);
+      if (blockingResult.error) {
+        logger.warn('ブロックの状態の取得エラー:', blockingResult.error.message);
+      }
+      setIsBlockingPartner(blockingResult.error ? null : blockingResult.data);
       setLoadedAt(now);
     },
     [sessionId, userId, showError]
@@ -150,6 +161,7 @@ export function SessionDetail({ sessionId }: Props) {
           setSession(null);
           setMessages([]);
           setReview(undefined);
+          setIsBlockingPartner(null);
         }
         await load(() => isCancelled);
         if (!isCancelled) setIsLoading(false);
@@ -242,6 +254,7 @@ export function SessionDetail({ sessionId }: Props) {
   }
 
   const isTeller = session.teller_id === userId;
+  const partnerId = session.applicant_id === userId ? session.recipient_id : session.applicant_id;
   const isPendingOpen = isOpenPending(session, loadedAt);
   // 占い師から応募して、相談者の承認を待っている間（承認されると相談者の情報が見られるようになる）
   const isWaitingConsultantConsent = isPendingOpen && session.initiated_by === 'teller';
@@ -369,6 +382,25 @@ export function SessionDetail({ sessionId }: Props) {
               )}
             </VStack>
           )}
+
+          {/* ブロックしても、このやり取りはそのまま続き、一覧にも残る。プロフィールが無い相手（アカウントの削除済み）にはリンクを出さない。
+              退会の手続き中（プロフィールが「退会したユーザー」に書き換わり、まだ削除されていない間）はリンクが出るが、
+              ブロックしてもマイページの一覧に出ず解除できないだけで、行はアカウントの削除で連鎖して消えるため、そのままにする */}
+          {session.partner_name !== null &&
+            (isBlockingPartner ? (
+              <Text size="sm" className="mt-4 text-center text-muted-foreground">
+                この相手はブロック中です（解除はマイページから）
+              </Text>
+            ) : (
+              <VStack className="mt-4">
+                <BlockUserLink
+                  userId={userId}
+                  otherUserId={partnerId}
+                  otherUserName={session.partner_name}
+                  onBlocked={() => setIsBlockingPartner(true)}
+                />
+              </VStack>
+            ))}
         </VStack>
       </ScrollView>
 

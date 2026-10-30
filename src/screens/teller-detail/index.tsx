@@ -1,6 +1,7 @@
 import { listTellerReviews } from '@/api/reviews';
 import { hasOpenSessionWithTeller } from '@/api/sessions';
 import { getTeller } from '@/api/tellers';
+import { BlockUserLink } from '@/components/block-user-link';
 import { Badge, BadgeText } from '@/components/ui/badge';
 import { Button, ButtonText } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -163,6 +164,16 @@ export function TellerDetail({ tellerId }: Props) {
   // 申込み済みかを確かめ終わるまでは押せない（null の間）
   const canApply = !isOwnProfile && teller.is_accepting && hasOpenSession === false;
 
+  // ブロックした相手は詳細にも出なくなる（get_teller が返さない）ため、前の画面に戻る。
+  // URL・通知から直接開いて戻る先が無ければ、さがすタブへ移る
+  function handleBlocked() {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  }
+
   function handleApply() {
     if (isNavigatingRef.current) return;
     isNavigatingRef.current = true;
@@ -226,6 +237,17 @@ export function TellerDetail({ tellerId }: Props) {
           )}
 
           <ReviewList reviews={reviews} reviewCount={teller.review_count} />
+
+          {!isOwnProfile && userId && (
+            <VStack className="mt-4">
+              <BlockUserLink
+                userId={userId}
+                otherUserId={teller.teller_id}
+                otherUserName={teller.display_name}
+                onBlocked={handleBlocked}
+              />
+            </VStack>
+          )}
         </VStack>
       </ScrollView>
 
