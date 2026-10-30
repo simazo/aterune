@@ -9,6 +9,8 @@ const SESSION_REQUEST_ERROR_MESSAGES: Record<string, string> = {
     'この占い師への申込みには生年月日の登録が必要です',
   'an open session already exists between the consultant and the teller':
     'この占い師にはすでに申し込んでいます',
+  // どちらかの向きのブロックがある。ブロックされたことは知らせないため、向きの分からない文言にする
+  'cannot send a request to this user': 'この相手には申し込めません',
 };
 
 // 分からないエラーや、通信エラーなどの場合の文言

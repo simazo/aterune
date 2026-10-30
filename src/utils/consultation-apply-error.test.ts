@@ -12,6 +12,8 @@ describe('getConsultationApplyErrorMessage', () => {
     ['only tellers can apply to a post', '応募するには占い師の登録が必要です'],
     ['cannot apply to your own post', '自分のお悩みには応募できません'],
     ['the post does not exist', 'このお悩みは見つかりませんでした'],
+    // どちらの向きのブロックかは伝えない
+    ['cannot send a request to this user', 'この相手には申し込めません'],
   ])('DB のエラーが「%s」なら対応する日本語の文言を返す', (message, expected) => {
     expect(getConsultationApplyErrorMessage({ code: 'P0001', message })).toBe(expected);
   });

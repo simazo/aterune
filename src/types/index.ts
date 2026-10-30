@@ -9,6 +9,7 @@ export type Message = Tables<'messages'>;
 export type Review = Tables<'reviews'>;
 export type Notification = Tables<'notifications'>;
 export type Favorite = Tables<'favorites'>;
+export type Block = Tables<'blocks'>;
 export type Tag = Tables<'tags'>;
 export type PushToken = Tables<'push_tokens'>;
 
@@ -112,6 +113,13 @@ export type NotificationListItem = Omit<
   type: NotificationType;
   partner_display_name: string | null;
   partner_avatar_path: string | null;
+};
+
+// list_blocked_users の結果の1行（マイページのブロック中の相談者・占い師の一覧）。
+// アイコンは未登録なら null。上書きの理由は TellerSearchResult と同じ
+type ListBlockedUsersRow = Database['public']['Functions']['list_blocked_users']['Returns'][number];
+export type BlockedUser = Omit<ListBlockedUsersRow, 'avatar_path'> & {
+  avatar_path: string | null;
 };
 
 // get_teller の結果（占い師詳細）。上書きの理由は TellerSearchResult と同じ

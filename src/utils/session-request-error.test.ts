@@ -16,6 +16,8 @@ describe('getSessionRequestErrorMessage', () => {
       'an open session already exists between the consultant and the teller',
       'この占い師にはすでに申し込んでいます',
     ],
+    // どちらの向きのブロックかは伝えない
+    ['cannot send a request to this user', 'この相手には申し込めません'],
   ])('DB のエラーが「%s」なら対応する日本語の文言を返す', (message, expected) => {
     expect(getSessionRequestErrorMessage({ message })).toBe(expected);
   });
