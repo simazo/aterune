@@ -79,17 +79,20 @@ export function Signup() {
         name="agreedToTerms"
         render={({ field: { value, onChange }, fieldState: { error } }) => (
           <FormControl isInvalid={!!error}>
-            {/* ラベルを押すとチェックが切り替わるため、規約を開くリンクはラベルの外に置く */}
-            <HStack className="items-center justify-between" space="sm">
-              <Checkbox value="agreedToTerms" isChecked={value} onChange={onChange} isInvalid={!!error}>
-                <FilledCheckboxIndicator>
-                  <CheckboxIcon as={CheckIcon} />
-                </FilledCheckboxIndicator>
-                <CheckboxLabel>利用規約に同意する</CheckboxLabel>
-              </Checkbox>
-              {/* 入力した内容が残るよう、規約は新規登録の上に重ねて開く */}
+            <Checkbox value="agreedToTerms" isChecked={value} onChange={onChange} isInvalid={!!error}>
+              <FilledCheckboxIndicator>
+                <CheckboxIcon as={CheckIcon} />
+              </FilledCheckboxIndicator>
+              <CheckboxLabel>利用規約とプライバシーポリシーに同意する</CheckboxLabel>
+            </Checkbox>
+            {/* ラベルを押すとチェックが切り替わるため、規約などを開くリンクはラベルの外（チェックの下）に置く。
+                入力した内容が残るよう、新規登録の上に重ねて開く */}
+            <HStack className="mt-2" space="lg">
               <Link onPress={() => router.push('/terms')}>
-                <LinkText size="sm">利用規約を読む</LinkText>
+                <LinkText size="sm">利用規約</LinkText>
+              </Link>
+              <Link onPress={() => router.push('/privacy')}>
+                <LinkText size="sm">プライバシーポリシー</LinkText>
               </Link>
             </HStack>
             <FormControlError>

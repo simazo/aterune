@@ -69,9 +69,9 @@ describe('signupSchema', () => {
     expect(signupSchema.safeParse({ ...validValues, password: '123456' }).success).toBe(true);
   });
 
-  it('利用規約に同意していなければエラー', () => {
+  it('利用規約とプライバシーポリシーに同意していなければエラー', () => {
     expect(firstErrorMessage({ ...validValues, agreedToTerms: false })).toBe(
-      '利用規約への同意が必要です'
+      '利用規約とプライバシーポリシーへの同意が必要です'
     );
   });
 });
