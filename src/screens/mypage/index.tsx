@@ -113,6 +113,9 @@ export function MyPage() {
         <Button variant="outline" className="bg-card" onPress={() => router.push('/favorites')}>
           <ButtonText>お気に入りの占い師</ButtonText>
         </Button>
+        <Button variant="outline" className="bg-card" onPress={() => router.push('/blocks')}>
+          <ButtonText>ブロック中の相談者・占い師</ButtonText>
+        </Button>
 
         {profile && userId && (
           <Card>
